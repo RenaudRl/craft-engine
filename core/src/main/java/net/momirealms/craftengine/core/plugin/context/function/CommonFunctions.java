@@ -3,7 +3,8 @@ package net.momirealms.craftengine.core.plugin.context.function;
 import net.momirealms.craftengine.core.util.Key;
 
 public final class CommonFunctions {
-    private CommonFunctions() {}
+    private CommonFunctions() {
+    }
 
     public static final Key RUN = Key.of("craftengine:run");
     public static final Key COMMAND = Key.of("craftengine:command");
@@ -52,4 +53,6 @@ public final class CommonFunctions {
     public static final Key PLAY_TOTEM_ANIMATION = Key.of("craftengine:play_totem_animation");
     public static final Key CLOSE_INVENTORY = Key.of("craftengine:close_inventory");
     public static final Key CLEAR_ITEM = Key.of("craftengine:clear_item");
+    public static final Key APPLY_DATA = Key.of("craftengine:apply_data");
+    public static final Key SET_LORE = Key.of("craftengine:set_lore");
 }

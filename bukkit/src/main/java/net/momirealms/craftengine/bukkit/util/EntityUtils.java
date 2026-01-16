@@ -32,11 +32,7 @@ public final class EntityUtils {
     }
 
     public static Entity spawnEntity(World world, Location loc, EntityType type, Consumer<Entity> function) {
-        if (VersionHelper.isOrAbove1_20_2()) {
-            return world.spawnEntity(loc, type, CreatureSpawnEvent.SpawnReason.CUSTOM, function);
-        } else {
-            return LegacyEntityUtils.spawnEntity(world, loc, type, function);
-        }
+        return world.spawnEntity(loc, type, CreatureSpawnEvent.SpawnReason.CUSTOM, function);
     }
 
     public static Key getEntityType(Entity entity) {

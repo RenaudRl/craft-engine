@@ -14,11 +14,7 @@ public final class InventoryUtils {
     private InventoryUtils() {}
 
     public static Player getPlayerFromInventoryEvent(InventoryEvent event) {
-        if (VersionHelper.isOrAbove1_21()) {
-            return (Player) event.getView().getPlayer();
-        } else {
-            return LegacyInventoryUtils.getPlayerFromInventoryEvent(event);
-        }
+        return (Player) event.getView().getPlayer();
     }
 
     public static int getSuitableHotBarSlot(PlayerInventory inventory) {

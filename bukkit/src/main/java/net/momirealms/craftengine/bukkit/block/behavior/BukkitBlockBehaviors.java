@@ -38,7 +38,8 @@ public class BukkitBlockBehaviors extends BlockBehaviors {
     public static final Key WALL_TORCH_PARTICLE_BLOCK = Key.from("craftengine:wall_torch_particle_block");
     public static final Key FENCE_BLOCK = Key.from("craftengine:fence_block");
     public static final Key BUTTON_BLOCK = Key.from("craftengine:button_block");
-    public static final Key FACE_ATTACHED_HORIZONTAL_DIRECTIONAL_BLOCK = Key.from("craftengine:face_attached_horizontal_directional_block");
+    public static final Key FACE_ATTACHED_HORIZONTAL_DIRECTIONAL_BLOCK = Key
+            .from("craftengine:face_attached_horizontal_directional_block");
     public static final Key STEM_BLOCK = Key.from("craftengine:stem_block");
     public static final Key ATTACHED_STEM_BLOCK = Key.from("craftengine:attached_stem_block");
     public static final Key CHIME_BLOCK = Key.from("craftengine:chime_block");
@@ -49,6 +50,10 @@ public class BukkitBlockBehaviors extends BlockBehaviors {
     public static final Key HANGABLE_BLOCK = Key.from("craftengine:hangable_block");
     public static final Key DROP_EXPERIENCE_BLOCK = Key.from("craftengine:drop_experience_block");
     public static final Key DROP_EXP_BLOCK = Key.from("craftengine:drop_exp_block");
+    public static final Key ADJUSTABLE_REDSTONE_BLOCK = Key.from("craftengine:adjustable_redstone_block");
+    public static final Key CHUNK_LOADER_BLOCK = Key.from("craftengine:chunk_loader_block");
+    public static final Key PICKAXE_BLOCK = Key.from("craftengine:pickaxe_block");
+    public static final Key PLACE_BLOCK = Key.from("craftengine:place_block");
 
     public static void init() {
         register(EMPTY, (block, args) -> EmptyBlockBehavior.INSTANCE);
@@ -96,5 +101,9 @@ public class BukkitBlockBehaviors extends BlockBehaviors {
         register(HANGABLE_BLOCK, HangableBlockBehavior.FACTORY);
         register(DROP_EXPERIENCE_BLOCK, DropExperienceBlockBehavior.FACTORY);
         register(DROP_EXP_BLOCK, DropExperienceBlockBehavior.FACTORY);
+        register(ADJUSTABLE_REDSTONE_BLOCK, AdjustableRedstoneBlockBehavior.FACTORY);
+        register(CHUNK_LOADER_BLOCK, ChunkLoaderBlockBehavior.FACTORY);
+        register(PICKAXE_BLOCK, PickaxeBlockBehavior.FACTORY);
+        register(PLACE_BLOCK, PlaceBlockBehavior.FACTORY);
     }
 }

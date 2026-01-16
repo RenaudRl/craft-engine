@@ -12,7 +12,7 @@ import net.momirealms.craftengine.bukkit.plugin.reflection.minecraft.NetworkRefl
 import net.momirealms.craftengine.bukkit.util.ComponentUtils;
 import net.momirealms.craftengine.bukkit.util.EntityUtils;
 import net.momirealms.craftengine.bukkit.util.InventoryUtils;
-import net.momirealms.craftengine.bukkit.util.LegacyInventoryUtils;
+import net.momirealms.craftengine.bukkit.util.InventoryUtils;
 import net.momirealms.craftengine.core.item.trade.MerchantOffer;
 import net.momirealms.craftengine.core.plugin.CraftEngine;
 import net.momirealms.craftengine.core.plugin.gui.*;
@@ -60,13 +60,13 @@ public class BukkitGuiManager implements GuiManager, Listener {
     public void openInventory(net.momirealms.craftengine.core.entity.player.Player player, GuiType guiType) {
         Player bukkitPlayer = (Player) player.platformPlayer();
         switch (guiType) {
-            case ANVIL -> LegacyInventoryUtils.openAnvil(bukkitPlayer);
-            case LOOM -> LegacyInventoryUtils.openLoom(bukkitPlayer);
-            case GRINDSTONE -> LegacyInventoryUtils.openGrindstone(bukkitPlayer);
-            case SMITHING -> LegacyInventoryUtils.openSmithingTable(bukkitPlayer);
-            case CRAFTING -> LegacyInventoryUtils.openWorkbench(bukkitPlayer);
-            case ENCHANTMENT -> LegacyInventoryUtils.openEnchanting(bukkitPlayer);
-            case CARTOGRAPHY -> LegacyInventoryUtils.openCartographyTable(bukkitPlayer);
+            case ANVIL -> bukkitPlayer.openAnvil(null, true);
+            case LOOM -> bukkitPlayer.openLoom(null, true);
+            case GRINDSTONE -> bukkitPlayer.openGrindstone(null, true);
+            case SMITHING -> bukkitPlayer.openSmithingTable(null, true);
+            case CRAFTING -> bukkitPlayer.openWorkbench(null, true);
+            case ENCHANTMENT -> bukkitPlayer.openEnchanting(null, true);
+            case CARTOGRAPHY -> bukkitPlayer.openCartographyTable(null, true);
         }
     }
 
@@ -166,7 +166,7 @@ public class BukkitGuiManager implements GuiManager, Listener {
 
     @Override
     public void openMerchant(net.momirealms.craftengine.core.entity.player.Player player, Component title, List<MerchantOffer<?>> offers) {
-        Merchant merchant = VersionHelper.isOrAbove1_21_4() ? Bukkit.createMerchant() : LegacyInventoryUtils.createMerchant();
+        Merchant merchant = Bukkit.createMerchant();
         List<MerchantRecipe> recipes = new ArrayList<>();
         for (MerchantOffer<?> offer : offers) {
             MerchantRecipe merchantRecipe = new MerchantRecipe((ItemStack) offer.result().getItem(), 0, CRAFT_ENGINE_MAGIC_MERCHANT_NUMBER, false, offer.xp(), 0);
@@ -183,7 +183,7 @@ public class BukkitGuiManager implements GuiManager, Listener {
                 this.plugin.logger().warn("Failed to update merchant title", e);
             }
         }
-        LegacyInventoryUtils.openMerchant((org.bukkit.entity.Player) player.platformPlayer(), merchant);
+        ((org.bukkit.entity.Player) player.platformPlayer()).openMerchant(merchant, true);
     }
 
     public static BukkitGuiManager instance() {

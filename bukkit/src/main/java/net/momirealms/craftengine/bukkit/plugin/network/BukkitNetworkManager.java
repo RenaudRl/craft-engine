@@ -67,7 +67,6 @@ import net.momirealms.craftengine.core.font.FontManager;
 import net.momirealms.craftengine.core.font.IllegalCharacterProcessResult;
 import net.momirealms.craftengine.core.item.CustomItem;
 import net.momirealms.craftengine.core.item.Item;
-import net.momirealms.craftengine.core.item.ItemKeys;
 import net.momirealms.craftengine.core.item.behavior.ItemBehavior;
 import net.momirealms.craftengine.core.item.context.UseOnContext;
 import net.momirealms.craftengine.core.item.recipe.network.legacy.LegacyRecipeHolder;
@@ -1859,13 +1858,8 @@ public class BukkitNetworkManager implements NetworkManager, Listener, PluginMes
         @Override
         public void onPacketSend(NetWorkUser user, NMSPacketEvent event, Object packet) {
             GameProfile gameProfile = FastNMS.INSTANCE.field$ClientboundLoginFinishedPacket$gameProfile(packet);
-            if (VersionHelper.isOrAbove1_21_9()) {
-                user.setVerifiedName(gameProfile.name());
-                user.setVerifiedUUID(gameProfile.id());
-            } else {
-                user.setVerifiedName(LegacyAuthLibUtils.getName(gameProfile));
-                user.setVerifiedUUID(LegacyAuthLibUtils.getId(gameProfile));
-            }
+            user.setVerifiedName(gameProfile.name());
+            user.setVerifiedUUID(gameProfile.id());
         }
     }
 
@@ -3814,7 +3808,7 @@ public class BukkitNetworkManager implements NetworkManager, Listener, PluginMes
                         return;
                     }
                     // 不处理调试棒
-                    if (itemInHand.vanillaId().equals(ItemKeys.DEBUG_STICK)) {
+                    if (BukkitItemUtils.isDebugStick(itemInHand)) {
                         return;
                     }
                     // 已经有过交互了

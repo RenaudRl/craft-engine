@@ -1,8 +1,7 @@
 package net.momirealms.craftengine.bukkit.entity.seat;
 
-import net.momirealms.craftengine.bukkit.util.EntityUtils;
-import net.momirealms.craftengine.bukkit.util.LegacyAttributeUtils;
 import net.momirealms.craftengine.bukkit.util.LocationUtils;
+import net.momirealms.craftengine.bukkit.util.EntityUtils;
 import net.momirealms.craftengine.core.entity.seat.Seat;
 import net.momirealms.craftengine.core.entity.seat.SeatConfig;
 import net.momirealms.craftengine.core.entity.seat.SeatOwner;
@@ -112,11 +111,7 @@ public class BukkitSeat<O extends SeatOwner> implements Seat<O> {
         Entity seatEntity = this.limitPlayerRotation() ?
                 EntityUtils.spawnEntity(player.getWorld(), VersionHelper.isOrAbove1_20_2() ? location.subtract(0,0.9875,0) : location.subtract(0,0.990625,0), EntityType.ARMOR_STAND, entity -> {
                     ArmorStand armorStand = (ArmorStand) entity;
-                    if (VersionHelper.isOrAbove1_21_3()) {
-                        Objects.requireNonNull(armorStand.getAttribute(Attribute.MAX_HEALTH)).setBaseValue(0.01);
-                    } else {
-                        LegacyAttributeUtils.setMaxHealth(armorStand);
-                    }
+                    Objects.requireNonNull(armorStand.getAttribute(Attribute.MAX_HEALTH)).setBaseValue(0.01);
                     armorStand.setSmall(true);
                     armorStand.setInvisible(true);
                     armorStand.setSilent(true);

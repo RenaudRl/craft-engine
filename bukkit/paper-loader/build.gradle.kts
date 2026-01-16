@@ -22,9 +22,7 @@ dependencies {
 
     implementation(project(":core"))
     implementation(project(":bukkit"))
-    implementation(project(":bukkit:legacy"))
     implementation(project(":bukkit:compatibility"))
-    implementation(project(":bukkit:compatibility:legacy"))
     implementation(project(":common-files"))
 
     // concurrentutil
@@ -55,31 +53,15 @@ paper {
     bootstrapper = "net.momirealms.craftengine.bukkit.plugin.PaperCraftEngineBootstrap"
     version = rootProject.properties["project_version"] as String
     name = "CraftEngine"
-    apiVersion = "1.20"
+    apiVersion = "1.21"
     authors = listOf("XiaoMoMi")
     contributors = listOf("https://github.com/Xiao-MoMi/craft-engine/graphs/contributors")
     foliaSupported = true
     serverDependencies {
-        // WorldEdit
-        register("WorldEdit") {
-            required = false
-            load = PaperPluginDescription.RelativeLoadOrder.BEFORE
-        }
-        register("FastAsyncWorldEdit") {
-            required = false
-            load = PaperPluginDescription.RelativeLoadOrder.BEFORE
-            joinClasspath = false
-        }
-
+        // Core integrations
         register("PlaceholderAPI") { required = false }
-        register("Skript") { required = false }
         register("LuckPerms") { required = false }
         register("ViaVersion") { required = false }
-        register("QuickShop-Hikari") { required = false }
-
-        // Geyser
-        register("Geyser-Spigot") { required = false }
-        register("floodgate") { required = false }
 
         // AdvancedSlimePaper
         register("SlimeWorldPlugin") { required = false }
@@ -92,54 +74,6 @@ paper {
         // external models
         register("ModelEngine") { required = false }
         register("BetterModel") { required = false }
-
-        // external items
-        register("NeigeItems") { required = false }
-        register("MMOItems") { required = false }
-        register("MythicMobs") { required = false }
-        register("CustomFishing") { required = false }
-        register("Zaphkiel") { required = false }
-        register("HeadDatabase") { required = false }
-        register("SX-Item") { required = false }
-        register("Slimefun") { required = false }
-        register("Nexo") { required = false }
-
-        // leveler
-        register("AuraSkills") { required = false }
-        register("AureliumSkills") { required = false }
-        register("McMMO") { required = false }
-        register("MMOCore") { required = false }
-        register("Jobs") { required = false }
-        register("EcoSkills") { required = false }
-        register("EcoJobs") { required = false }
-
-        // anti grief lib
-        register("Dominion") { required = false }
-        register("WorldGuard") { required = false }
-        register("Kingdoms") { required = false }
-        register("Lands") { required = false }
-        register("IridiumSkyblock") { required = false }
-        register("CrashClaim") { required = false }
-        register("GriefDefender") { required = false }
-        register("HuskClaims") { required = false }
-        register("BentoBox") { required = false }
-        register("HuskTowns") { required = false }
-        register("PlotSquared") { required = false }
-        register("Residence") { required = false }
-        register("SuperiorSkyblock2") { required = false }
-        register("Towny") { required = false }
-        register("FabledSkyBlock") { required = false }
-        register("GriefPrevention") { required = false }
-        register("RedProtect") { required = false }
-        register("Landlord") { required = false }
-        register("uSkyBlock") { required = false }
-        register("XClaim") { required = false }
-        register("UltimateClaims") { required = false }
-        register("UltimateClans") { required = false }
-        register("PreciousStones") { required = false }
-        register("hClaims") { required = false }
-        register("Factions") { required = false }
-        register("NoBuildPlus") { required = false }
     }
 }
 
@@ -152,7 +86,7 @@ tasks {
         manifest {
             attributes["paperweight-mappings-namespace"] = "mojang"
         }
-        archiveFileName = "${rootProject.name}-${rootProject.properties["project_version"]}-community-paper.jar"
+        archiveFileName = "${rootProject.name}-paper-plugin-${rootProject.properties["project_version"]}.jar"
         destinationDirectory.set(file("$rootDir/target"))
         relocate("net.kyori", "net.momirealms.craftengine.libraries")
         relocate("net.momirealms.sparrow.nbt", "net.momirealms.craftengine.libraries.nbt")
@@ -185,15 +119,6 @@ tasks {
  */
 listOf(
     "1.21.10",
-    "1.21.8",
-    "1.21.5",
-    "1.21.4",
-    "1.21.2",
-    "1.21.1",
-    "1.20.6",
-    "1.20.4",
-    "1.20.2",
-    "1.20.1",
 ).forEach {
     registerPaperTask(it)
 }

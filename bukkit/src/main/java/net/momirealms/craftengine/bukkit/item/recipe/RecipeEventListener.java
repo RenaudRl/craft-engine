@@ -428,9 +428,9 @@ public class RecipeEventListener implements Listener {
             maxRepairCost = anvilView.getMaximumRepairCost();
             //previousCost = anvilView.getRepairCost();
         } else {
-            renameText = LegacyInventoryUtils.getRenameText(inventory);
-            maxRepairCost = LegacyInventoryUtils.getMaxRepairCost(inventory);
-            //previousCost = LegacyInventoryUtils.getRepairCost(inventory);
+            renameText = inventory.getRenameText();
+            maxRepairCost = inventory.getMaximumRepairCost();
+            //previousCost = inventory.getRepairCost();
         }
 
         int repairCost = actualConsumedAmount;
@@ -475,8 +475,8 @@ public class RecipeEventListener implements Listener {
             anvilView.setRepairCost(finalCost);
             anvilView.setRepairItemCountCost(actualConsumedAmount);
         } else {
-            LegacyInventoryUtils.setRepairCost(inventory, finalCost);
-            LegacyInventoryUtils.setRepairCostAmount(inventory, actualConsumedAmount);
+            inventory.setRepairCost(finalCost);
+            inventory.setRepairCostAmount(actualConsumedAmount);
         }
 
         Player player = InventoryUtils.getPlayerFromInventoryEvent(event);
@@ -516,7 +516,7 @@ public class RecipeEventListener implements Listener {
                     AnvilView anvilView = event.getView();
                     renameText = anvilView.getRenameText();
                 } else {
-                    renameText = LegacyInventoryUtils.getRenameText(inventory);
+                    renameText = inventory.getRenameText();
                 }
                 if (renameText != null && !renameText.isBlank()) {
                     try {
@@ -665,19 +665,8 @@ public class RecipeEventListener implements Listener {
         BukkitServerPlayer serverPlayer = BukkitAdaptors.adapt(player);
 
         // 对低版本nothing不全的兼容
-        if (!VersionHelper.isOrAbove1_20_5() && LegacyInventoryUtils.isHotBarSwapAndReadd(action)) {
-            int slot = event.getHotbarButton();
-            if (slot == -1) {
-                if (!serverPlayer.getItemInHand(InteractionHand.OFF_HAND).isEmpty()) {
-                    return;
-                }
-            } else {
-                ItemStack item = player.getInventory().getItem(slot);
-                if (!ItemStackUtils.isEmpty(item)) {
-                    return;
-                }
-            }
-        }
+        // Dead code removed - we target 1.21.11+ where version checks are always true
+
 
         // 多次合成
         if (event.isShiftClick()) {
@@ -897,20 +886,8 @@ public class RecipeEventListener implements Listener {
                 return;
             }
 
-            // 对低版本nothing不全的兼容
-            if (!VersionHelper.isOrAbove1_20_5() && LegacyInventoryUtils.isHotBarSwapAndReadd(action)) {
-                int slot = event.getHotbarButton();
-                if (slot == -1) {
-                    if (!serverPlayer.getItemInHand(InteractionHand.OFF_HAND).isEmpty()) {
-                        return;
-                    }
-                } else {
-                    ItemStack item = player.getInventory().getItem(slot);
-                    if (!ItemStackUtils.isEmpty(item)) {
-                        return;
-                    }
-                }
-            }
+            // Dead code removed - we target 1.21.11+ where version checks are always true
+
 
             if (event.isShiftClick()) {
                 // 由插件自己处理多次合成
@@ -1019,20 +996,8 @@ public class RecipeEventListener implements Listener {
                 return;
             }
 
-            // 对低版本nothing不全的兼容
-            if (!VersionHelper.isOrAbove1_20_5() && LegacyInventoryUtils.isHotBarSwapAndReadd(action)) {
-                int slot = event.getHotbarButton();
-                if (slot == -1) {
-                    if (!serverPlayer.getItemInHand(InteractionHand.OFF_HAND).isEmpty()) {
-                        return;
-                    }
-                } else {
-                    ItemStack item = player.getInventory().getItem(slot);
-                    if (!ItemStackUtils.isEmpty(item)) {
-                        return;
-                    }
-                }
-            }
+            // Dead code removed - we target 1.21.11+ where version checks are always true
+
 
             if (event.isShiftClick()) {
                 // 由插件自己处理多次合成

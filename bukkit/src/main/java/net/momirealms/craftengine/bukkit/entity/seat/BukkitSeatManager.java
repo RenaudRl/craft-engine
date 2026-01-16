@@ -1,6 +1,5 @@
 package net.momirealms.craftengine.bukkit.entity.seat;
 
-import net.momirealms.craftengine.bukkit.entity.furniture.DismountListener1_20;
 import net.momirealms.craftengine.bukkit.entity.furniture.DismountListener1_20_3;
 import net.momirealms.craftengine.bukkit.plugin.BukkitCraftEngine;
 import net.momirealms.craftengine.bukkit.util.EntityUtils;
@@ -37,7 +36,7 @@ public class BukkitSeatManager implements SeatManager, Listener {
 
     public BukkitSeatManager(BukkitCraftEngine plugin) {
         this.plugin = plugin;
-        this.dismountListener = VersionHelper.isOrAbove1_20_3() ? new DismountListener1_20_3(this::handleDismount) : new DismountListener1_20(this::handleDismount);
+        this.dismountListener = new DismountListener1_20_3(this::handleDismount);
         instance = this;
     }
 

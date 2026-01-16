@@ -11,7 +11,6 @@ import net.momirealms.craftengine.bukkit.plugin.reflection.paper.PaperReflection
 import net.momirealms.craftengine.bukkit.util.ComponentUtils;
 import net.momirealms.craftengine.bukkit.util.InventoryUtils;
 import net.momirealms.craftengine.bukkit.util.ItemStackUtils;
-import net.momirealms.craftengine.bukkit.util.LegacyInventoryUtils;
 import net.momirealms.craftengine.core.font.*;
 import net.momirealms.craftengine.core.item.Item;
 import net.momirealms.craftengine.core.plugin.config.Config;
@@ -36,6 +35,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 
 public class BukkitFontManager extends AbstractFontManager implements Listener {
+
     private static BukkitFontManager instance;
     private final BukkitCraftEngine plugin;
 
@@ -140,13 +140,7 @@ public class BukkitFontManager extends AbstractFontManager implements Listener {
         ItemStack result = event.getResult();
         if (ItemStackUtils.isEmpty(result)) return;
         Player player = InventoryUtils.getPlayerFromInventoryEvent(event);
-        String renameText;
-        if (VersionHelper.isOrAbove1_21_2()) {
-            AnvilView anvilView = event.getView();
-            renameText = anvilView.getRenameText();
-        } else {
-            renameText = LegacyInventoryUtils.getRenameText(event.getInventory());
-        }
+        String renameText = event.getInventory().getRenameText();
 
         if (renameText == null || renameText.isEmpty()) return;
         Component itemName = Component.text(renameText);
@@ -213,6 +207,7 @@ public class BukkitFontManager extends AbstractFontManager implements Listener {
         }
     }
 
+    // fixme 这些做法其实是错误的，我们只应该修改字体为minecraft:default的部分
     @SuppressWarnings("UnstableApiUsage")
     private void processChatEvent(AsyncChatDecorateEvent event) {
         Player player = event.player();
@@ -220,30 +215,23 @@ public class BukkitFontManager extends AbstractFontManager implements Listener {
         try {
             Object originalMessage = PaperReflections.field$AsyncChatDecorateEvent$originalMessage.get(event);
             String rawJsonMessage = ComponentUtils.paperAdventureToJson(originalMessage);
+            boolean changed = false;
+            if (!player.hasPermission(FontManager.BYPASS_CHAT)) {
+                IllegalCharacterProcessResult result = processIllegalCharacters(rawJsonMessage);
+                if (result.has()) {
+                    rawJsonMessage = result.text();
+                    changed = true;
+                }
+            }
             if (Config.allowEmojiChat()) {
-                EmojiTextProcessResult processResult = replaceJsonEmoji(rawJsonMessage, BukkitAdaptors.adapt(player));
-                boolean hasChanged = processResult.replaced();
-                if (!player.hasPermission(FontManager.BYPASS_CHAT))  {
-                    IllegalCharacterProcessResult result = processIllegalCharacters(processResult.text());
-                    if (result.has()) {
-                        Object component = ComponentUtils.jsonToPaperAdventure(result.text());
-                        PaperReflections.method$AsyncChatDecorateEvent$result.invoke(event, component);
-                    } else if (hasChanged) {
-                        Object component = ComponentUtils.jsonToPaperAdventure(processResult.text());
-                        PaperReflections.method$AsyncChatDecorateEvent$result.invoke(event, component);
-                    }
-                } else if (hasChanged) {
-                    Object component = ComponentUtils.jsonToPaperAdventure(processResult.text());
-                    PaperReflections.method$AsyncChatDecorateEvent$result.invoke(event, component);
+                EmojiTextProcessResult result = replaceJsonEmoji(rawJsonMessage, BukkitAdaptors.adapt(player));
+                if (result.replaced()) {
+                    rawJsonMessage = result.text();
+                    changed = true;
                 }
-            } else {
-                if (!player.hasPermission(FontManager.BYPASS_CHAT))  {
-                    IllegalCharacterProcessResult result = processIllegalCharacters(rawJsonMessage);
-                    if (result.has()) {
-                        Object component = ComponentUtils.jsonToPaperAdventure(result.text());
-                        PaperReflections.method$AsyncChatDecorateEvent$result.invoke(event, component);
-                    }
-                }
+            }
+            if (changed) {
+                PaperReflections.method$AsyncChatDecorateEvent$result.invoke(event, ComponentUtils.jsonToPaperAdventure(rawJsonMessage));
             }
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);

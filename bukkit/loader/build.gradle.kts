@@ -16,9 +16,7 @@ dependencies {
 
     implementation(project(":core"))
     implementation(project(":bukkit"))
-    implementation(project(":bukkit:legacy"))
     implementation(project(":bukkit:compatibility"))
-    implementation(project(":bukkit:compatibility:legacy"))
     implementation(project(":common-files"))
 
     // concurrentutil
@@ -48,10 +46,9 @@ bukkit {
     main = "net.momirealms.craftengine.bukkit.plugin.BukkitCraftEnginePlugin"
     version = rootProject.properties["project_version"] as String
     name = "CraftEngine"
-    apiVersion = "1.20"
+    apiVersion = "1.21"
     authors = listOf("XiaoMoMi")
     contributors = listOf("https://github.com/Xiao-MoMi/craft-engine/graphs/contributors")
-    softDepend = listOf("WorldEdit", "FastAsyncWorldEdit")
     foliaSupported = true
 }
 
@@ -61,7 +58,7 @@ artifacts {
 
 tasks {
     shadowJar {
-        archiveFileName = "${rootProject.name}-${rootProject.properties["project_version"]}-community-bukkit.jar"
+        archiveFileName = "${rootProject.name}-bukkit-plugin-${rootProject.properties["project_version"]}.jar"
         destinationDirectory.set(file("$rootDir/target"))
         relocate("net.kyori", "net.momirealms.craftengine.libraries")
         relocate("net.momirealms.sparrow.nbt", "net.momirealms.craftengine.libraries.nbt")
