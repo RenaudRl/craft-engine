@@ -4,7 +4,7 @@
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
 ![Target](https://img.shields.io/badge/Target-Folia%20/%20Paper-blue)
 
-**CraftEngine** is a next-generation, high-performance plugin for custom content implementation, engineered specifically for the **BTC Studio** infrastructure. This fork is optimized for native, blazingly fast integration with **Paper** and **Folia**.
+**[CraftEngine](https://github.com/Xiao-MoMi/craft-engine)** is a next-generation, high-performance plugin for custom content implementation, engineered specifically for the **BTC Studio** infrastructure. This fork is optimized for native, blazingly fast integration with **Paper** and **Folia**.
 
 > [!WARNING]
 > **PLATFORM COMPATIBILITY NOTICE**
@@ -70,11 +70,6 @@ This project draws inspiration from the broader Minecraft development community:
 - **[byte-buddy](https://github.com/raphw/byte-buddy)** - Runtime code generation.
 
 ---
-
-## 🌍 How to Contribute
-
-### 🔌 New Features & Bug Fixes
-If your PR is about a bug fix, it will most likely get merged. If you want to submit a new feature, please make sure to contact us in advance on [Discord](https://discord.com/invite/WVKdaUPR3S).
 
 ### 🌍 Translations
 1. Clone this repository.
