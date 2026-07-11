@@ -52,6 +52,12 @@ public final class CollisionUtils {
             return false;
         }
         List<Object> entities = EntityGetterProxy.INSTANCE.getEntities(level, null, bounds);
+        // BTC-CORE P11: skip the entity-collision loop when BTC-CORE throttles collision work
+        // (regions dense with entities / sustained MSPT pressure). Block collisions above are
+        // already honoured. Cached no-op returning true when BTC-CORE is absent.
+        if (!BtcCoreHook.shouldCalculateCollision(entities.size())) {
+            return true;
+        }
         for (Object entity : entities) {
             if (entityFilter.test(entity)) {
                 if (!EntityProxy.INSTANCE.isRemoved(entity)
