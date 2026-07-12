@@ -1,91 +1,14 @@
-<h1 align="center">
-  <div style="text-align:center">
-    <img src="https://github.com/user-attachments/assets/4e679094-303b-481d-859d-073efc61037c" alt="logo" style="width:100px; height:auto;">
-  </div>
-  CraftEngine
-</h1>
+# CraftEngine — BTC Fork
 
-<p align="center">
-  <a href="https://deepwiki.com/Xiao-MoMi/craft-engine">
-    <img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki">
-  </a>
-  <a href="https://xiao-momi.github.io/craft-engine-wiki/" alt="doc">
-    <img src="https://img.shields.io/badge/📙-User Manual-D2691E" alt="doc"/>
-  </a>
-</p>
+Fork de **[CraftEngine](https://github.com/Xiao-MoMi/craft-engine)** (Xiao-MoMi), adapté au serveur **BornToCraft** — Paper / Folia **26.2**. Base synchronisée sur l'upstream **26.7.2**.
 
-## 📌 About CraftEngine
-CraftEngine works as a next-generation solution for custom content implementation.
+## Nos ajouts / correctifs BTC
+- **Hook de throttle de collision** (`CollisionUtils` via `BtcCoreHook`) — sous forte charge / régions denses en entités, la boucle de collision d'entités est court-circuitée via la façade `dev.btc.core.api.BTCCoreAPI` (`shouldCalculateCollision`). Les collisions de blocs restent respectées. Dégradation gracieuse : aucun effet hors BTC-CORE.
 
 ## Build
-
-### 🐚 Command Line
-+ Start terminal and change directory to the project folder.
-+ Execute "./gradlew build" and get the artifact under /target folder.
-
-### 💻 IDE
-+ Import the project and execute gradle build action.
-+ Get the artifact under /target folder.
-
-## Inspired Projects
-This project draws inspiration and refers to some implementations from the following open-source works:
-+ [Paper](https://github.com/PaperMC/Paper)
-+ [LuckPerms](https://github.com/LuckPerms/LuckPerms)
-+ [Fabric](https://github.com/FabricMC/fabric)
-+ [packetevents](https://github.com/retrooper/packetevents)
-+ [DataFixerUpper](https://github.com/Mojang/DataFixerUpper)
-+ [ViaVersion](https://github.com/ViaVersion/ViaVersion)
-
-### Core Dependencies
-The implementation relies on these fundamental libraries:
-+ [cloud-minecraft](https://github.com/Incendo/cloud-minecraft)
-+ [adventure](https://github.com/KyoriPowered/adventure)
-+ [byte-buddy](https://github.com/raphw/byte-buddy)
-
-## How to Contribute
-
-### 🔌 New Features & Bug Fixes 
-If your PR is about a bug fix, it will most likely get merged. If you want to submit a new feature, please make sure to contact me in advance on [Discord](https://discord.com/invite/WVKdaUPR3S).
-The code you contribute will be open-sourced under the GPLv3 license. If you prefer a more permissive license(MIT), you can specifically indicate it at the top of the file.
-
-### 🌍 Translations
-1. Clone this repository.
-2. Create a new language file in: `/common-files/src/main/resources/translations`
-3. Once done, submit a **pull request** to **dev** branch for review. We appreciate your contributions!
-
-## Differences Between Versions
-| Version           | Official Support | Exclusive Features | Dev Builds |
-|-------------------|------------------|--------------------|------------|
-| Community Edition | ❌ No             | ❌ No               | ❌ No       |
-| Premium Edition   | ✔️ Yes           | ✔️ Yes             | ✔️ Yes     |
-
-### 💖 Support the Developer
-Help sustain CraftEngine's development by going Premium!
-
-- **Polymart**: [Support via Polymart](https://polymart.org/product/7624/craftengine)
-- **BuiltByBit**: [Support via BuiltByBit](https://builtbybit.com/resources/craftengine.82674/)
-- **Afdian**: [Support via Afdian](https://afdian.com/@xiaomomi/)
-
-## CraftEngine API
-
-```kotlin
-repositories {
-    maven("https://repo.momirealms.net/releases/")
-}
-```
-```kotlin
-dependencies {
-    compileOnly("net.momirealms:craft-engine-core:26.7")
-    compileOnly("net.momirealms:craft-engine-bukkit:26.7")
-}
+```bash
+./gradlew :bukkit:build        # jar dans bukkit/build/libs/
 ```
 
-Some optional dependencies
-```kotlin
-dependencies {
-    // If you want to use the shaded adventure library
-    compileOnly("net.momirealms:craft-engine-adventure:26.7")
-    // This dependency is used to access certain NMS code, which is not a stable API.
-    compileOnly("net.momirealms:craft-engine-bukkit-proxy:26.7")
-}
-```
+---
+Base upstream : `Xiao-MoMi/craft-engine` (26.7.2) · cible Minecraft **26.2**
