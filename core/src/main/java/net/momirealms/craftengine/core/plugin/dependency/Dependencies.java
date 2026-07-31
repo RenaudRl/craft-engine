@@ -38,23 +38,6 @@ public final class Dependencies {
             "proxy.jarinjar"
     );
 
-    /**
-     * The MiniPlaceholders bridge, nested in the plugin jar and loaded only when the plugin is
-     * present.
-     *
-     * <p>Unlike the proxy above it is {@link DependencyVisibility#INTERNAL}: it must land in the
-     * plugin's own classloader, the only one where the MiniPlaceholders API is visible. The shared
-     * appender points at the server classloader, which cannot see plugin classes.</p>
-     */
-    public static final Dependency CRAFT_ENGINE_MINIPLACEHOLDERS = new Dependency(
-            "craft-engine-miniplaceholders",
-            "net.momirealms",
-            "craft-engine-miniplaceholders",
-            Collections.emptyList(),
-            DependencyVisibility.INTERNAL,
-            "miniplaceholders.jarinjar"
-    );
-
     public static final Dependency GEANTY_REF = new Dependency(
             "geantyref",
             "io{}leangen{}geantyref",

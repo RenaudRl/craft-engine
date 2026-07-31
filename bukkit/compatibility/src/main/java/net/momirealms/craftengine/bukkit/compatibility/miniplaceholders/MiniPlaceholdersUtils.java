@@ -9,12 +9,19 @@ import net.momirealms.craftengine.bukkit.plugin.placeholder.MiniPlaceholdersBrid
 import net.momirealms.craftengine.core.plugin.compatibility.TagResolverProvider;
 import net.momirealms.craftengine.core.plugin.context.Context;
 import net.momirealms.craftengine.core.plugin.context.PlayerContext;
-import net.momirealms.craftengine.core.plugin.dependency.Dependencies;
 import net.momirealms.craftengine.core.util.AdventureHelper;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,24 +45,58 @@ import java.util.List;
 public final class MiniPlaceholdersUtils {
     private MiniPlaceholdersUtils() {}
 
-    private static volatile MiniPlaceholdersBridge bridge;
+    /** Nested jar holding the unrelocated half of the hook. */
+    private static final String BRIDGE_JAR = "miniplaceholders.jarinjar";
 
-    /**
-     * Extracts the bridge jar into the plugin classloader, instantiates it and registers the
-     * expansions.
-     *
-     * <p>The classloader matters: the jar is added to the CraftEngine plugin's own loader, which is
-     * where both the server's Adventure and — thanks to the {@code MiniPlaceholders} entry in
-     * {@code paper-plugin.yml} — the MiniPlaceholders API are visible.</p>
-     */
-    public static void registerExpansions(BukkitCraftEngine plugin) throws ReflectiveOperationException {
-        plugin.dependencyManager().loadDependencies(List.of(Dependencies.CRAFT_ENGINE_MINIPLACEHOLDERS));
+    private static volatile MiniPlaceholdersBridge bridge;
+    @SuppressWarnings("unused") // kept alive for as long as the classes it defined are in use
+    private static URLClassLoader bridgeClassLoader;
+
+    /** Loads the bridge out of the nested jar, instantiates it and registers the expansions. */
+    public static void registerExpansions(BukkitCraftEngine plugin) throws Exception {
+        ClassLoader loader = loadBridgeJar(plugin);
         MiniPlaceholdersBridge loaded = (MiniPlaceholdersBridge) Class
-                .forName(MiniPlaceholdersBridge.IMPLEMENTATION, true, MiniPlaceholdersUtils.class.getClassLoader())
+                .forName(MiniPlaceholdersBridge.IMPLEMENTATION, true, loader)
                 .getDeclaredConstructor()
                 .newInstance();
         loaded.registerExpansions(plugin);
         bridge = loaded;
+    }
+
+    /**
+     * Extracts the nested jar and opens a loader for it whose <b>parent is this plugin's own
+     * classloader</b>.
+     *
+     * <p>That parent is the whole point, and the reason the dependency manager cannot be used here
+     * the way {@code proxy.jarinjar} uses it. Its appenders hand jars either to the server
+     * classloader or to Paper's library loader, and neither can see plugin classes: defining
+     * {@code MiniPlaceholdersBridgeImpl} there fails on its own super-interface, and even without
+     * one every call back into CraftEngine would fail to link. The proxy gets away with it because
+     * it only ever talks to the server.</p>
+     *
+     * <p>Parent-first delegation then resolves each side from where it actually lives: the bridge
+     * interface and CraftEngine's API from the plugin jar, the MiniPlaceholders API from that
+     * plugin (see the {@code MiniPlaceholders} entry in the plugin descriptor), and the server's
+     * unrelocated Adventure from the server — the plugin jar holds no {@code net.kyori} class of
+     * its own, they are all relocated.</p>
+     */
+    private static ClassLoader loadBridgeJar(BukkitCraftEngine plugin) throws IOException {
+        // Same folder as the downloaded dependencies, which is wiped of loose jars on every boot,
+        // so a stale copy can never outlive the plugin jar it was extracted from.
+        Path jar = plugin.dataFolderPath().resolve("libs").resolve("miniplaceholders-bridge.jar");
+        Files.createDirectories(jar.getParent());
+        try (InputStream in = MiniPlaceholdersUtils.class.getClassLoader().getResourceAsStream(BRIDGE_JAR)) {
+            if (in == null) {
+                throw new FileNotFoundException(BRIDGE_JAR + " is missing from the plugin jar");
+            }
+            Files.copy(in, jar, StandardCopyOption.REPLACE_EXISTING);
+        }
+        URLClassLoader loader = new URLClassLoader(
+                new URL[]{jar.toUri().toURL()},
+                MiniPlaceholdersUtils.class.getClassLoader()
+        );
+        bridgeClassLoader = loader;
+        return loader;
     }
 
     /**
