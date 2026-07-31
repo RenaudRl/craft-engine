@@ -17,8 +17,40 @@ subprojects {
     }
 
     repositories {
+        // Le fork MiniPlaceholders publie sous les coordonnees amont, que Maven Central sert
+        // aussi. exclusiveContent epingle le module au depot BTC pour que l'artefact public ne
+        // puisse jamais masquer le fork en silence.
+        exclusiveContent {
+            forRepository {
+                maven {
+                    name = "btcRepo"
+                    url = uri(
+                        providers.gradleProperty("btcRepoDir")
+                            .getOrElse(rootProject.file("../BTCVelocity/repo").absolutePath)
+                    )
+                }
+            }
+            filter {
+                includeModule("io.github.miniplaceholders", "miniplaceholders-api")
+            }
+        }
         mavenCentral()
         maven("https://oss.sonatype.org/content/repositories/snapshots")
+    }
+
+    // BTC Studio unified static Maven repo: committed under BTCVelocity/repo and uploaded
+    // as-is to https://borntocraftstudio.net/public/repo/ . Overridable via -PbtcRepoDir
+    // so this fork still builds when BTCVelocity is not checked out next to it.
+    extensions.configure<PublishingExtension>("publishing") {
+        repositories {
+            maven {
+                name = "btcRepo"
+                url = uri(
+                    providers.gradleProperty("btcRepoDir")
+                        .getOrElse(rootProject.file("../BTCVelocity/repo").absolutePath)
+                )
+            }
+        }
     }
 
     extensions.create<RelocationExtension>("relocation")

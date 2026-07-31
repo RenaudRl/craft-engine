@@ -26,7 +26,8 @@ import net.momirealms.craftengine.bukkit.compatibility.mythicmobs.MythicMobsSpaw
 import net.momirealms.craftengine.bukkit.compatibility.nameplates.CustomNameplateHatSettings;
 import net.momirealms.craftengine.bukkit.compatibility.nameplates.CustomNameplateProviders;
 import net.momirealms.craftengine.bukkit.compatibility.packetevents.WrappedBlockStateHelper;
-import net.momirealms.craftengine.bukkit.compatibility.papi.PlaceholderAPIUtils;
+import net.momirealms.craftengine.bukkit.compatibility.miniplaceholders.MiniPlaceholdersUtils;
+import net.momirealms.craftengine.core.plugin.network.AbstractNetworkManager;
 import net.momirealms.craftengine.bukkit.compatibility.permission.LuckPermsEventListeners;
 import net.momirealms.craftengine.bukkit.compatibility.permission.LuckPermsUtils;
 import net.momirealms.craftengine.bukkit.compatibility.quickshop.QuickShopItemExpressionHandler;
@@ -80,7 +81,6 @@ public final class BukkitCompatibilityManager implements CompatibilityManager {
     private TagResolverProvider[] tagResolverProviderArray = null;
     private AxiomCraftEngineDisplay axiomCraftEngineDisplay;
     private JsonObject blueMapBlockColors = new JsonObject();
-    private boolean hasPlaceholderAPI;
     private boolean hasGeyser;
     private boolean hasFloodgate;
     private boolean hasLuckPerms;
@@ -211,11 +211,16 @@ public final class BukkitCompatibilityManager implements CompatibilityManager {
 
     @Override
     public void onDelayedEnable() {
-        if (this.isPluginEnabled("PlaceholderAPI")) {
+        if (this.isPluginEnabled("MiniPlaceholders")) {
             runCatchingHook(() -> {
-                PlaceholderAPIUtils.registerExpansions(this.plugin);
-                this.hasPlaceholderAPI = true;
-            }, "PlaceholderAPI");
+                MiniPlaceholdersUtils.registerExpansions(this.plugin);
+                registerTagResolverProvider(new MiniPlaceholdersUtils.Provider());
+                // Placeholder tags vary per viewer, so lines carrying them must not be
+                // pre-parsed once and cached. Both detectors take a resolver/predicate rather
+                // than a name list: the set of tags depends on the installed expansions.
+                FormattedLine.Companion.registerDynamicResolver(MiniPlaceholdersUtils.resolvers());
+                AbstractNetworkManager.registerNetworkTagPredicate(MiniPlaceholdersUtils::isPlaceholderTag);
+            }, "MiniPlaceholders");
         }
         if (this.isPluginEnabled("LuckPerms")) {
             runCatchingHook(this::initLuckPermsHook, "LuckPerms");
@@ -402,11 +407,6 @@ public final class BukkitCompatibilityManager implements CompatibilityManager {
     }
 
     @Override
-    public boolean hasPlaceholderAPI() {
-        return this.hasPlaceholderAPI;
-    }
-
-    @Override
     public boolean isPluginEnabled(String plugin) {
         return Bukkit.getPluginManager().isPluginEnabled(plugin);
     }
@@ -414,18 +414,6 @@ public final class BukkitCompatibilityManager implements CompatibilityManager {
     @Override
     public boolean hasPlugin(String plugin) {
         return Bukkit.getPluginManager().getPlugin(plugin) != null;
-    }
-
-    @Override
-    public String parse(Player player, String text) {
-        return player == null
-                ? PlaceholderAPIUtils.parse(null, text)
-                : PlaceholderAPIUtils.parse((org.bukkit.entity.Player) player.platformPlayer(), text);
-    }
-
-    @Override
-    public String parse(Player player1, Player player2, String text) {
-        return PlaceholderAPIUtils.parse((org.bukkit.entity.Player) player1.platformPlayer(), (org.bukkit.entity.Player) player2.platformPlayer(), text);
     }
 
     @Override

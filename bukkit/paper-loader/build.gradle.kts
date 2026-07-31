@@ -63,7 +63,7 @@ paper {
             joinClasspath = false
         }
 
-        register("PlaceholderAPI") { required = false }
+        register("MiniPlaceholders") { required = false }
         register("Skript") { required = false }
         register("LuckPerms") { required = false }
         register("ViaVersion") { required = false }

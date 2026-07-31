@@ -13,6 +13,8 @@ import net.momirealms.craftengine.core.util.Key;
 import net.momirealms.craftengine.core.util.MiscUtils;
 
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Predicate;
 
 public abstract class AbstractNetworkManager implements NetworkManager {
     protected Map<String, ComponentProvider> networkTagMapper = new HashMap<>(1024);
@@ -41,8 +43,34 @@ public abstract class AbstractNetworkManager implements NetworkManager {
         it.add("l10n");
         it.add("shift");
         it.add("global");
-        it.add("papi");
     });
+
+    /**
+     * Extra predicates deciding whether a tag is viewer-dependent.
+     *
+     * <p>{@link #NETWORK_TAGS} lists tags CraftEngine owns, which is a closed set. The
+     * {@code papi} entry that used to sit there covered every PlaceholderAPI placeholder at once;
+     * MiniPlaceholders instead contributes one {@code expansion_key} tag per placeholder, and
+     * which ones exist depends on the installed plugins. A platform hook registers a predicate
+     * rather than trying to enumerate them.</p>
+     */
+    private static final List<Predicate<String>> NETWORK_TAG_PREDICATES = new CopyOnWriteArrayList<>();
+
+    public static void registerNetworkTagPredicate(Predicate<String> predicate) {
+        NETWORK_TAG_PREDICATES.add(predicate);
+    }
+
+    private static boolean isNetworkTag(String sanitized) {
+        if (NETWORK_TAGS.contains(sanitized)) {
+            return true;
+        }
+        for (Predicate<String> predicate : NETWORK_TAG_PREDICATES) {
+            if (predicate.test(sanitized)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     private static String imageTag(String text) {
         return "<image:" + text + ">";
@@ -116,7 +144,7 @@ public abstract class AbstractNetworkManager implements NetworkManager {
                         continue;
                     }
                     final String sanitized = TokenParser.TagProvider.sanitizePlaceholderName(token.childTokens().getFirst().get(text).toString());
-                    if (NETWORK_TAGS.contains(sanitized)) {
+                    if (isNetworkTag(sanitized)) {
                         String tag = text.substring(token.startIndex(), token.endIndex());
                         tags.computeIfAbsent(tag, k -> {
                             ComponentProvider provider = this.networkTagMapper.get(k);

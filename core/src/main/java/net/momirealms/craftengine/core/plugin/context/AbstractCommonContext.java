@@ -53,7 +53,7 @@ public abstract class AbstractCommonContext implements Context {
     @NotNull
     protected TagResolver[] getInternalTagResolvers() {
         return new TagResolver[]{ShiftTag.INSTANCE, ImageTag.INSTANCE, I18NTag.INSTANCE, PlainL10NTag.INSTANCE, new NamedArgumentTag(this),
-                new PlaceholderTag(this), ExpressionTag.INSTANCE, GlobalVariableTag.INSTANCE};
+                ExpressionTag.INSTANCE, GlobalVariableTag.INSTANCE};
     }
 
     @Override

@@ -24,15 +24,12 @@ public interface CompatibilityManager {
 
     ExternalModel createModel(String id);
 
-    boolean hasPlaceholderAPI();
 
     boolean isPluginEnabled(String plugin);
 
     boolean hasPlugin(String plugin);
 
-    String parse(Player player, String text);
 
-    String parse(Player player1, Player player2, String text);
 
     int getViaVersionProtocolVersion(NetWorkUser user);
 

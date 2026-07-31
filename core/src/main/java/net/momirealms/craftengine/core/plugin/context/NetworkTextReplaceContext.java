@@ -29,6 +29,6 @@ public final class NetworkTextReplaceContext extends PlayerOptionalContext imple
     @NotNull
     protected TagResolver[] getInternalTagResolvers() {
         return new TagResolver[]{ShiftTag.INSTANCE, ImageTag.INSTANCE, I18NTag.INSTANCE, new NetworkL10NTag(this), new NamedArgumentTag(this),
-                new PlaceholderTag(this), ExpressionTag.INSTANCE, GlobalVariableTag.INSTANCE};
+                ExpressionTag.INSTANCE, GlobalVariableTag.INSTANCE};
     }
 }

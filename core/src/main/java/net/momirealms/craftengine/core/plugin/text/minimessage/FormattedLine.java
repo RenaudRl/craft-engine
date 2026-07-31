@@ -10,6 +10,8 @@ import net.momirealms.craftengine.core.util.AdventureHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public interface FormattedLine {
@@ -20,21 +22,42 @@ public interface FormattedLine {
             createDummyResolvers("shift"),
             createDummyResolvers("i18n"),
             createDummyResolvers("l10n"),
-            createDummyResolvers("global"),
-            createDummyResolvers("papi"),
-            createDummyResolvers("rel_papi")
+            createDummyResolvers("global")
     };
 
     class Companion {
         public static TagResolver[] LATEST_RESOLVERS = CUSTOM_RESOLVERS;
 
+        /**
+         * Resolvers recognised by name is not enough for every source of dynamic tags.
+         *
+         * <p>The {@code papi} and {@code rel_papi} entries above used to cover every
+         * PlaceholderAPI placeholder under two fixed names. MiniPlaceholders has no such funnel:
+         * each expansion contributes its own {@code expansion_key} tags, and the set depends on
+         * which plugins are installed. So a platform hook contributes a whole resolver, which
+         * answers {@code has(name)} for anything it can resolve.</p>
+         */
+        private static final List<TagResolver> DYNAMIC_RESOLVERS = new ArrayList<>();
+
+        public static void registerDynamicResolver(TagResolver resolver) {
+            DYNAMIC_RESOLVERS.add(resolver);
+            rebuild(LAST_CUSTOM_NAMES);
+        }
+
+        private static List<String> LAST_CUSTOM_NAMES = List.of();
+
         public static void resetWithCustomResolvers(List<String> customResolvers) {
-            TagResolver[] resolvers = new TagResolver[customResolvers.size() + CUSTOM_RESOLVERS.length];
-            System.arraycopy(CUSTOM_RESOLVERS, 0, resolvers, 0, CUSTOM_RESOLVERS.length);
-            for (int i = 0; i < customResolvers.size(); i++) {
-                resolvers[CUSTOM_RESOLVERS.length + i] = createDummyResolvers(customResolvers.get(i));
+            LAST_CUSTOM_NAMES = List.copyOf(customResolvers);
+            rebuild(LAST_CUSTOM_NAMES);
+        }
+
+        private static void rebuild(List<String> customResolvers) {
+            List<TagResolver> resolvers = new ArrayList<>(Arrays.asList(CUSTOM_RESOLVERS));
+            for (String name : customResolvers) {
+                resolvers.add(createDummyResolvers(name));
             }
-            LATEST_RESOLVERS = resolvers;
+            resolvers.addAll(DYNAMIC_RESOLVERS);
+            LATEST_RESOLVERS = resolvers.toArray(new TagResolver[0]);
         }
     }
 
@@ -84,7 +107,13 @@ public interface FormattedLine {
 
         @Override
         public Component parse(net.momirealms.craftengine.core.plugin.context.Context context) {
-            return AdventureHelper.miniMessage().deserialize(this.content, context.tagResolvers());
+            // The audience must reach `deserialize`, not the resolvers: MiniMessage binds
+            // audience-scoped placeholders to the target, so passing only the resolvers would
+            // leave every player-dependent MiniPlaceholders tag empty.
+            net.kyori.adventure.pointer.Pointered audience = context.audience();
+            return audience == null
+                    ? AdventureHelper.miniMessage().deserialize(this.content, context.tagResolvers())
+                    : AdventureHelper.miniMessage().deserialize(this.content, audience, context.tagResolvers());
         }
     }
 }

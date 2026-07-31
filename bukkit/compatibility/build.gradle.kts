@@ -7,7 +7,6 @@ repositories {
     maven("https://repo.papermc.io/repository/maven-public/")
     maven("https://repo.momirealms.net/releases/")
     maven("https://repo.gtemc.net/releases/")
-    maven("https://repo.extendedclip.com/content/repositories/placeholderapi/") // papi
     maven("https://maven.enginehub.org/repo/") // worldguard worldedit
     maven("https://repo.infernalsuite.com/repository/maven-snapshots/")  // slime world
     maven("https://mvn.lumine.io/repository/maven-public/") // model engine mythic mobs
@@ -32,8 +31,8 @@ dependencies {
     compileOnly("net.momirealms:sparrow-reflection:${rootProject.properties["sparrow_reflection_version"]}")
     // NMS
     compileOnly("net.momirealms:craft-engine-nms-helper:${rootProject.properties["nms_helper_version"]}")
-    // Placeholder
-    compileOnly("me.clip:placeholderapi:${rootProject.properties["placeholder_api_version"]}")
+    // Placeholders : MiniPlaceholders (fork BTC), resolu depuis le depot BTC epingle a la racine.
+    compileOnly("io.github.miniplaceholders:miniplaceholders-api:${rootProject.properties["miniplaceholders_version"]}")
     // SlimeWorld
     compileOnly("com.infernalsuite.asp:api:4.2.0-SNAPSHOT")
     // ModelEngine
