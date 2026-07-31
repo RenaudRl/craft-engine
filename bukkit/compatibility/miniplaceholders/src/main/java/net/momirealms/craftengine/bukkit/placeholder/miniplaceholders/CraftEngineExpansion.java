@@ -1,4 +1,4 @@
-package net.momirealms.craftengine.bukkit.compatibility.miniplaceholders;
+package net.momirealms.craftengine.bukkit.placeholder.miniplaceholders;
 
 import io.github.miniplaceholders.api.Expansion;
 import net.kyori.adventure.text.Component;

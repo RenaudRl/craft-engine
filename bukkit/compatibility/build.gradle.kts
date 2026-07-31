@@ -31,8 +31,8 @@ dependencies {
     compileOnly("net.momirealms:sparrow-reflection:${rootProject.properties["sparrow_reflection_version"]}")
     // NMS
     compileOnly("net.momirealms:craft-engine-nms-helper:${rootProject.properties["nms_helper_version"]}")
-    // Placeholders : MiniPlaceholders (fork BTC), resolu depuis le depot BTC epingle a la racine.
-    compileOnly("io.github.miniplaceholders:miniplaceholders-api:${rootProject.properties["miniplaceholders_version"]}")
+    // Pas de miniplaceholders-api ici : ce module est relocalise, il ne parle a MiniPlaceholders
+    // qu'a travers MiniPlaceholdersBridge. L'API est consommee par :bukkit:compatibility:miniplaceholders.
     // SlimeWorld
     compileOnly("com.infernalsuite.asp:api:4.2.0-SNAPSHOT")
     // ModelEngine
