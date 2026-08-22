@@ -65,6 +65,7 @@ paper {
         }
 
         register("PlaceholderAPI") { required = false }
+        register("MiniPlaceholders") { required = false }
         register("Skript") {
             required = false
             load = PaperPluginDescription.RelativeLoadOrder.AFTER
@@ -191,6 +192,8 @@ tasks {
             attributes["paperweight-mappings-namespace"] = "mojang"
         }
         from(project(":bukkit:proxy").tasks.shadowJar.flatMap { it.archiveFile })
+        // Nested unrelocated, like the proxy: relocating it would break the MiniPlaceholders hook.
+        from(project(":bukkit:compatibility:miniplaceholders").tasks.shadowJar.flatMap { it.archiveFile })
         archiveFileName = "${rootProject.name}-paper-plugin-${rootProject.properties["project_version"]}.jar"
         destinationDirectory.set(file("$rootDir/target"))
     }

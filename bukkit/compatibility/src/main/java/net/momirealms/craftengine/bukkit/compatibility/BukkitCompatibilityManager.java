@@ -23,6 +23,7 @@ import net.momirealms.craftengine.bukkit.compatibility.model.modelengine.ModelEn
 import net.momirealms.craftengine.bukkit.compatibility.mythicmobs.MythicItemDropListener;
 import net.momirealms.craftengine.bukkit.compatibility.mythicmobs.MythicMobsSkillFunction;
 import net.momirealms.craftengine.bukkit.compatibility.mythicmobs.MythicMobsSpawnFunction;
+import net.momirealms.craftengine.bukkit.compatibility.miniplaceholders.MiniPlaceholdersUtils;
 import net.momirealms.craftengine.bukkit.compatibility.nameplates.CustomNameplateHatSettings;
 import net.momirealms.craftengine.bukkit.compatibility.nameplates.CustomNameplateProviders;
 import net.momirealms.craftengine.bukkit.compatibility.packetevents.WrappedBlockStateHelper;
@@ -272,6 +273,12 @@ public final class BukkitCompatibilityManager implements CompatibilityManager {
                 PlaceholderAPIUtils.registerExpansions(this.plugin);
                 this.hasPlaceholderAPI = true;
             }, "PlaceholderAPI");
+        }
+        if (this.isPluginEnabled("MiniPlaceholders")) {
+            runCatchingHook(() -> {
+                MiniPlaceholdersUtils.registerExpansions(this.plugin);
+                registerTagResolverProvider(new MiniPlaceholdersUtils.Provider());
+            }, "MiniPlaceholders");
         }
         if (this.isPluginEnabled("LuckPerms")) {
             runCatchingHook(this::initLuckPermsHook, "LuckPerms");

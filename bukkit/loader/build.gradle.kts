@@ -44,7 +44,7 @@ bukkit {
     apiVersion = "1.20"
     authors = listOf("XiaoMoMi")
     contributors = listOf("https://github.com/Xiao-MoMi/craft-engine/graphs/contributors")
-    softDepend = listOf("WorldEdit", "FastAsyncWorldEdit")
+    softDepend = listOf("WorldEdit", "FastAsyncWorldEdit", "MiniPlaceholders")
     foliaSupported = true
 }
 
@@ -56,6 +56,8 @@ tasks {
     shadowJar {
         relocation.applyCommon(this)
         from(project(":bukkit:proxy").tasks.shadowJar.flatMap { it.archiveFile })
+        // Nested unrelocated, like the proxy: relocating it would break the MiniPlaceholders hook.
+        from(project(":bukkit:compatibility:miniplaceholders").tasks.shadowJar.flatMap { it.archiveFile })
         archiveFileName = "${rootProject.name}-bukkit-plugin-${rootProject.properties["project_version"]}.jar"
         destinationDirectory.set(file("$rootDir/target"))
     }
