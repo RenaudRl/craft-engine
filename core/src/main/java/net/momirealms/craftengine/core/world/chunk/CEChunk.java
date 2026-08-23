@@ -7,8 +7,9 @@ import net.momirealms.craftengine.core.block.EmptyBlockDefinition;
 import net.momirealms.craftengine.core.block.ImmutableBlockState;
 import net.momirealms.craftengine.core.block.entity.BlockEntity;
 import net.momirealms.craftengine.core.block.entity.BlockEntityController;
-import net.momirealms.craftengine.core.block.entity.render.BlockEntityRenderer;
+import net.momirealms.craftengine.core.block.entity.InactiveBlockEntityController;
 import net.momirealms.craftengine.core.block.entity.render.ConstantBlockEntityRenderer;
+import net.momirealms.craftengine.core.block.entity.render.DynamicBlockEntityRenderer;
 import net.momirealms.craftengine.core.block.entity.render.element.BlockEntityElement;
 import net.momirealms.craftengine.core.block.entity.render.element.BlockEntityElementConfig;
 import net.momirealms.craftengine.core.block.entity.render.element.ConstantBlockEntityElement;
@@ -40,7 +41,7 @@ public class CEChunk {
     protected final Map<BlockPos, ReplaceableTickingBlockEntity> tickingSyncBlockEntitiesByPos; // 从区域线程上访问，安全
     protected final Map<BlockPos, ReplaceableTickingBlockEntity> tickingAsyncBlockEntitiesByPos; // 从区域线程上访问，安全
     protected final Map<BlockPos, ConstantBlockEntityRenderer> constantBlockEntityRenderers; // 会从区域线程上读写，异步线程上读取
-    protected final Map<BlockPos, BlockEntityRenderer> dynamicBlockEntityRenderers; // 会从区域线程上读写，异步线程上读取
+    protected final Map<BlockPos, DynamicBlockEntityRenderer> dynamicBlockEntityRenderers; // 会从区域线程上读写，异步线程上读取
     protected final ReentrantReadWriteLock renderLock = new ReentrantReadWriteLock();
     protected volatile boolean unsaved;
     protected volatile boolean loaded;
@@ -116,13 +117,14 @@ public class CEChunk {
             this.renderLock.readLock().lock();
             if (Config.enableEntityCulling()) {
                 player.addTrackedBlockEntities(this.constantBlockEntityRenderers);
+                player.addTrackedDynamicBlockEntities(this.dynamicBlockEntityRenderers);
             } else {
                 for (ConstantBlockEntityRenderer renderer : this.constantBlockEntityRenderers.values()) {
                     renderer.show(player);
                 }
-            }
-            for (BlockEntityRenderer renderer : this.dynamicBlockEntityRenderers.values()) {
-                renderer.show(player);
+                for (DynamicBlockEntityRenderer renderer : this.dynamicBlockEntityRenderers.values()) {
+                    renderer.show(player);
+                }
             }
         } finally {
             this.renderLock.readLock().unlock();
@@ -134,13 +136,14 @@ public class CEChunk {
             this.renderLock.readLock().lock();
             if (Config.enableEntityCulling()) {
                 player.removeTrackedBlockEntities(this.constantBlockEntityRenderers.keySet());
+                player.removeTrackedDynamicBlockEntities(this.dynamicBlockEntityRenderers.keySet());
             } else {
                 for (ConstantBlockEntityRenderer renderer : this.constantBlockEntityRenderers.values()) {
                     renderer.hide(player);
                 }
-            }
-            for (BlockEntityRenderer renderer : this.dynamicBlockEntityRenderers.values()) {
-                renderer.hide(player);
+                for (DynamicBlockEntityRenderer renderer : this.dynamicBlockEntityRenderers.values()) {
+                    renderer.hide(player);
+                }
             }
         } finally {
             this.renderLock.readLock().unlock();
@@ -190,6 +193,15 @@ public class CEChunk {
         }
     }
 
+    @Nullable
+    private static CullingData createBlockEntityCullingData(ImmutableBlockState state, BlockPos pos) {
+        CullingData data = state.cullingData();
+        if (data == null) {
+            return null;
+        }
+        return new CullingData(data.aabb.move(pos), data.maxDistance, data.aabbExpansion, data.rayTracing);
+    }
+
     @SuppressWarnings({"unchecked", "rawtypes"})
     public ConstantBlockEntityRenderer addConstantBlockEntityRenderer(BlockPos pos, ImmutableBlockState state, @Nullable ConstantBlockEntityRenderer previous) {
         BlockEntityElementConfig<? extends ConstantBlockEntityElement>[] renderers = state.constantRenderers();
@@ -197,9 +209,7 @@ public class CEChunk {
             ConstantBlockEntityElement[] elements = new ConstantBlockEntityElement[renderers.length];
             ConstantBlockEntityRenderer renderer = new ConstantBlockEntityRenderer(
                     elements,
-                    Optional.ofNullable(state.cullingData())
-                            .map(data -> new CullingData(data.aabb.move(pos), data.maxDistance, data.aabbExpansion, data.rayTracing))
-                            .orElse(null)
+                    createBlockEntityCullingData(state, pos)
             );
             List<Player> trackedBy = getTrackedBy();
             boolean hasTrackedBy = trackedBy != null && !trackedBy.isEmpty();
@@ -440,10 +450,16 @@ public class CEChunk {
     private void removeDynamicBlockEntityRenderer(BlockPos pos) {
         try {
             this.renderLock.writeLock().lock();
-            BlockEntityRenderer renderer = this.dynamicBlockEntityRenderers.remove(pos);
+            DynamicBlockEntityRenderer renderer = this.dynamicBlockEntityRenderers.remove(pos);
             if (renderer != null) {
-                for (Player player : getTrackedBy()) {
-                    renderer.hide(player);
+                if (Config.enableEntityCulling()) {
+                    for (Player player : getTrackedBy()) {
+                        player.removeTrackedDynamicBlockEntity(pos);
+                    }
+                } else {
+                    for (Player player : getTrackedBy()) {
+                        renderer.hide(player);
+                    }
                 }
             }
         } finally {
@@ -454,16 +470,29 @@ public class CEChunk {
     public void addBlockEntity(BlockEntity blockEntity) {
         this.setBlockEntity(blockEntity);
         if (this.activated) {
+            try {
+                blockEntity.controller.onLoad();
+            } catch (Throwable t) {
+                CraftEngine.instance().logger().warn("Failed to load block entity " + blockEntity.blockState + " at " + world.name() + " " + blockEntity.pos, t);
+            }
             this.replaceOrCreateTickingBlockEntity(blockEntity);
             this.createDynamicBlockEntityRenderer(blockEntity);
         }
     }
 
     public void removeBlockEntity(BlockPos blockPos) {
-        BlockEntity removedBlockEntity = this.blockEntities.remove(blockPos.asLong());
-        if (removedBlockEntity != null) {
-            removedBlockEntity.setValid(false);
-        }
+        BlockEntity blockEntity = this.blockEntities.remove(blockPos.asLong());
+        if (blockEntity != null) {
+            // 与 onLoad 成对：只有区块处于激活状态（即触发过 onLoad）时才触发 onUnload
+            if (this.activated) {
+                try {
+                    blockEntity.controller.onUnload();
+                } catch (Throwable t) {
+                    CraftEngine.instance().logger().warn("Failed to unload block entity " + blockEntity.blockState + " at " + world.name() + " " + blockEntity.pos, t);
+                }
+            }
+            blockEntity.setValid(false);
+    }
         this.removeBlockEntityTicker(blockPos);
         this.removeDynamicBlockEntityRenderer(blockPos);
     }
@@ -478,6 +507,11 @@ public class CEChunk {
             blockEntity.setValid(true);
             this.replaceOrCreateTickingBlockEntity(blockEntity);
             this.createDynamicBlockEntityRenderer(blockEntity);
+            try {
+                blockEntity.controller.onLoad();
+            } catch (Throwable t) {
+                CraftEngine.instance().logger().warn("Failed to load block entity " + blockEntity.blockState + " at " + world.name() + " " + blockEntity.pos, t);
+            }
         }
         try {
             this.renderLock.readLock().lock();
@@ -492,13 +526,20 @@ public class CEChunk {
 
     public void deactivateAllBlockEntities() {
         if (!this.activated) return;
-        this.blockEntities.values().forEach(e -> e.setValid(false));
+        this.blockEntities.values().forEach(e -> {
+            e.setValid(false);
+            try {
+                e.controller.onUnload();
+            } catch (Throwable t) {
+                CraftEngine.instance().logger().warn("Failed to unload block entity " + e.blockState + " at " + world.name() + " " + e.pos, t);
+            }
+        });
 
         if (!CraftEngine.instance().isStopping()) {
             try {
                 this.renderLock.readLock().lock();
                 this.constantBlockEntityRenderers.values().forEach(ConstantBlockEntityRenderer::deactivate);
-                this.dynamicBlockEntityRenderers.values().forEach(BlockEntityRenderer::deactivate);
+                this.dynamicBlockEntityRenderers.values().forEach(DynamicBlockEntityRenderer::deactivate);
             } finally {
                 this.renderLock.readLock().unlock();
             }
@@ -554,9 +595,10 @@ public class CEChunk {
     }
 
     public <T extends BlockEntity> void createDynamicBlockEntityRenderer(T blockEntity) {
-        BlockEntityRenderer renderer = blockEntity.renderer();
+        DynamicBlockEntityRenderer renderer = blockEntity.dynamicRenderer();
         if (renderer != null) {
-            BlockEntityRenderer previous;
+            renderer.setCullingData(createBlockEntityCullingData(blockEntity.blockState(), blockEntity.pos()));
+            DynamicBlockEntityRenderer previous;
             try {
                 this.renderLock.writeLock().lock();
                 previous = this.dynamicBlockEntityRenderers.put(blockEntity.pos(), renderer);
@@ -568,14 +610,36 @@ public class CEChunk {
                 if (previous == renderer) {
                     return;
                 }
-                for (Player player : getTrackedBy()) {
-                    previous.hide(player);
-                    renderer.show(player);
+                if (Config.enableEntityCulling()) {
+                    for (Player player : getTrackedBy()) {
+                        CullableHolder holder = player.getTrackedDynamicBlockEntity(blockEntity.pos());
+                        if (holder != null) {
+                            if (holder.isShown) {
+                                previous.hide(player);
+                                renderer.show(player);
+                            }
+                            holder.cullable = renderer;
+                            holder.setForceVisible(player, renderer.initialForceVisible(player));
+                        } else {
+                            player.addTrackedDynamicBlockEntity(blockEntity.pos(), renderer);
+                        }
+                    }
+                } else {
+                    for (Player player : getTrackedBy()) {
+                        previous.hide(player);
+                        renderer.show(player);
+                    }
                 }
                 previous.deactivate();
             } else {
-                for (Player player : getTrackedBy()) {
-                    renderer.show(player);
+                if (Config.enableEntityCulling()) {
+                    for (Player player : getTrackedBy()) {
+                        player.addTrackedDynamicBlockEntity(blockEntity.pos(), renderer);
+                    }
+                } else {
+                    for (Player player : getTrackedBy()) {
+                        renderer.show(player);
+                    }
                 }
             }
         } else {
@@ -605,7 +669,7 @@ public class CEChunk {
     public void setBlockEntity(BlockEntity blockEntity) {
         BlockPos pos = blockEntity.pos();
         ImmutableBlockState blockState = this.getBlockState(pos);
-        if (!blockState.hasBlockEntity()) {
+        if (!blockState.hasBlockEntity() && !(blockEntity.controller instanceof InactiveBlockEntityController)) {
             Debugger.BLOCK.debug(() -> "Failed to add invalid block entity " + blockEntity.saveAsTag() + " at " + pos);
             return;
         }
@@ -661,7 +725,7 @@ public class CEChunk {
     public boolean isEmpty() {
         if (!this.blockEntities.isEmpty()) return false;
         for (CESection section : this.sections) {
-            if (section != null && !section.statesContainer.isEmpty()) {
+            if (section != null && !section.isEmpty()) {
                 return false;
             }
         }
@@ -695,7 +759,7 @@ public class CEChunk {
 
     @NotNull
     public ImmutableBlockState getBlockState(BlockPos pos) {
-        return getBlockState(pos.x(), pos.y(), pos.z());
+        return getBlockState(pos.x, pos.y, pos.z);
     }
 
     @NotNull

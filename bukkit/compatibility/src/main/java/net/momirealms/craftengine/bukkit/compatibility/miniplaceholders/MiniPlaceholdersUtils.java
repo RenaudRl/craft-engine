@@ -1,15 +1,16 @@
 package net.momirealms.craftengine.bukkit.compatibility.miniplaceholders;
 
-import net.kyori.adventure.text.minimessage.ParsingException;
-import net.kyori.adventure.text.minimessage.tag.Tag;
-import net.kyori.adventure.text.minimessage.tag.resolver.ArgumentQueue;
-import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import net.momirealms.craftengine.bukkit.plugin.BukkitCraftEngine;
 import net.momirealms.craftengine.bukkit.plugin.placeholder.MiniPlaceholdersBridge;
 import net.momirealms.craftengine.core.plugin.compatibility.TagResolverProvider;
 import net.momirealms.craftengine.core.plugin.context.Context;
 import net.momirealms.craftengine.core.plugin.context.PlayerContext;
+import net.momirealms.craftengine.core.plugin.context.ViewerContext;
 import net.momirealms.craftengine.core.util.AdventureHelper;
+import net.momirealms.sparrow.message.ParsingException;
+import net.momirealms.sparrow.message.tag.Tag;
+import net.momirealms.sparrow.message.tag.resolver.ArgumentQueue;
+import net.momirealms.sparrow.message.tag.resolver.TagResolver;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -26,27 +27,30 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * CraftEngine's entry point to MiniPlaceholders, replacing the PlaceholderAPI hook.
+ * CraftEngine's entry point to MiniPlaceholders, added alongside the PlaceholderAPI hook.
  *
  * <p>This class sits on the relocated side, so it never touches the MiniPlaceholders API itself:
  * everything goes through {@link MiniPlaceholdersBridge}, whose implementation is loaded from a
  * nested, unrelocated jar. See that interface for why the split is unavoidable.</p>
  *
- * <p>Two directions, both simpler than under PlaceholderAPI:</p>
+ * <p>Two directions:</p>
  * <ul>
  *   <li><b>Producing</b> — the four expansions ({@code ce}, {@code image}, {@code shift},
- *       {@code checkceitem}) are registered by the bridge instead of through PlaceholderAPI.</li>
- *   <li><b>Consuming</b> — the bespoke {@code <papi:…>}, {@code <rel_papi:…>} and
- *       {@code <viewer_papi:…>} tags are gone. Every MiniPlaceholders tag is answered by the
- *       resolvers below, which delegate the actual parse across the boundary and rebuild the
- *       resulting component on this side from JSON.</li>
+ *       {@code checkceitem}) are registered with MiniPlaceholders by the bridge.</li>
+ *   <li><b>Consuming</b> — every MiniPlaceholders tag is answered by {@link #resolver()}, which
+ *       delegates the parse across the boundary and rebuilds the component here from JSON.</li>
  * </ul>
+ *
+ * <p>The built-in {@code <papi:…>} family is left in place: those tags return nothing unless
+ * PlaceholderAPI is installed, so both hooks can coexist and a server picks whichever it runs.</p>
  */
 public final class MiniPlaceholdersUtils {
     private MiniPlaceholdersUtils() {}
 
     /** Nested jar holding the unrelocated half of the hook. */
     private static final String BRIDGE_JAR = "miniplaceholders.jarinjar";
+
+    private static final TagResolver RESOLVER = new BridgedResolver();
 
     private static volatile MiniPlaceholdersBridge bridge;
     @SuppressWarnings("unused") // kept alive for as long as the classes it defined are in use
@@ -99,15 +103,9 @@ public final class MiniPlaceholdersUtils {
         return loader;
     }
 
-    /**
-     * A resolver answering for every MiniPlaceholders tag currently registered, with no viewer.
-     *
-     * <p>Used to tell CraftEngine which lines carry dynamic tags. Names cannot be enumerated up
-     * front — each installed expansion contributes its own — so the resolver's {@code has(name)} is
-     * the authority.</p>
-     */
-    public static TagResolver resolvers() {
-        return bridgedResolver(null);
+    /** The resolver answering for every MiniPlaceholders tag currently registered. */
+    public static TagResolver resolver() {
+        return RESOLVER;
     }
 
     /** Whether {@code name} is a tag some registered MiniPlaceholders expansion can resolve. */
@@ -117,41 +115,60 @@ public final class MiniPlaceholdersUtils {
     }
 
     /**
-     * A resolver that hands each claimed tag to the bridge and deserializes the JSON it gets back.
+     * Hands each claimed tag to the bridge and deserializes the JSON it gets back.
      *
      * <p>The component is inserted rather than pre-processed: it crosses the boundary already
      * parsed, so it carries its own style instead of inheriting the surrounding one. That is the
      * one visible difference from a native MiniPlaceholders parse.</p>
+     *
+     * <p>Stateless, so a single instance serves every parse. The audience cannot be captured up
+     * front for the same reason: it is read from the parse target on each call.</p>
      */
-    private static TagResolver bridgedResolver(@Nullable Player viewer) {
-        return new TagResolver() {
+    private static final class BridgedResolver implements TagResolver {
 
-            @Override
-            public boolean has(@NotNull String name) {
-                return isPlaceholderTag(name);
-            }
+        @Override
+        public boolean has(@NotNull String name) {
+            return isPlaceholderTag(name);
+        }
 
-            @Override
-            public @Nullable Tag resolve(@NotNull String name, @NotNull ArgumentQueue arguments,
-                                         @NotNull net.kyori.adventure.text.minimessage.Context ctx) throws ParsingException {
-                MiniPlaceholdersBridge current = bridge;
-                if (current == null) return null;
-                List<String> values = new ArrayList<>();
-                while (arguments.hasNext()) {
-                    values.add(arguments.pop().value());
-                }
-                return Tag.selfClosingInserting(AdventureHelper.jsonToComponent(current.renderToJson(name, values, viewer)));
+        @Override
+        public @Nullable Tag resolve(@NotNull String name, @NotNull ArgumentQueue arguments,
+                                     @NotNull net.momirealms.sparrow.message.Context ctx) throws ParsingException {
+            MiniPlaceholdersBridge current = bridge;
+            if (current == null) return null;
+            List<String> values = new ArrayList<>();
+            while (arguments.hasNext()) {
+                values.add(arguments.pop().value());
             }
-        };
+            return Tag.selfClosingInserting(
+                    AdventureHelper.jsonToComponent(current.renderToJson(name, values, viewerOf(ctx))));
+        }
+
+        /**
+         * The Bukkit player audience-scoped placeholders are read from.
+         *
+         * <p>Taken from the platform player rather than from {@code Context#audience()}: that one
+         * yields a <em>relocated</em> {@code Pointered}, which is unusable across the boundary.</p>
+         */
+        private static @Nullable Player viewerOf(net.momirealms.sparrow.message.Context ctx) {
+            if (!(ctx.target() instanceof Context context)) return null;
+            net.momirealms.craftengine.core.entity.player.Player player = playerOf(context);
+            if (player == null) return null;
+            return player.platformPlayer() instanceof Player bukkitPlayer ? bukkitPlayer : null;
+        }
+
+        private static net.momirealms.craftengine.core.entity.player.@Nullable Player playerOf(Context context) {
+            if (context instanceof ViewerContext viewerContext) return viewerContext.viewer().player();
+            if (context instanceof PlayerContext playerContext) return playerContext.player();
+            return null;
+        }
     }
 
     /**
      * Feeds every registered MiniPlaceholders tag into CraftEngine's own resolver chain.
      *
-     * <p>Audience-scoped placeholders read the viewer bound at parse time, which is why the viewer
-     * is pulled out of the context here. {@code Context#audience()} is of no use across the
-     * boundary — it yields a <em>relocated</em> {@code Pointered} — so the platform player is taken
-     * from {@link PlayerContext#player()} instead.</p>
+     * <p>Registered once the bridge is up; before that the resolver claims no tag, so registering
+     * early would only make lines miss their placeholders in silence.</p>
      */
     public static final class Provider implements TagResolverProvider {
 
@@ -161,16 +178,8 @@ public final class MiniPlaceholdersUtils {
         }
 
         @Override
-        public TagResolver getTagResolver(Context context) {
-            return bridgedResolver(viewerOf(context));
-        }
-
-        @Nullable
-        private static Player viewerOf(Context context) {
-            if (!(context instanceof PlayerContext playerContext)) return null;
-            net.momirealms.craftengine.core.entity.player.Player player = playerContext.player();
-            if (player == null) return null;
-            return player.platformPlayer() instanceof Player bukkitPlayer ? bukkitPlayer : null;
+        public TagResolver getTagResolver() {
+            return resolver();
         }
     }
 }

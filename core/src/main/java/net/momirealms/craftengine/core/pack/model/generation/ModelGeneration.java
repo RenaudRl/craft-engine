@@ -3,10 +3,7 @@ package net.momirealms.craftengine.core.pack.model.generation;
 import com.google.gson.JsonObject;
 import net.momirealms.craftengine.core.pack.model.generation.display.DisplayMeta;
 import net.momirealms.craftengine.core.pack.model.generation.display.DisplayPosition;
-import net.momirealms.craftengine.core.plugin.config.ConfigConstants;
-import net.momirealms.craftengine.core.plugin.config.ConfigSection;
-import net.momirealms.craftengine.core.plugin.config.ConfigValue;
-import net.momirealms.craftengine.core.plugin.config.KnownResourceException;
+import net.momirealms.craftengine.core.plugin.config.*;
 import net.momirealms.craftengine.core.util.EnumUtils;
 import net.momirealms.craftengine.core.util.Key;
 import net.momirealms.craftengine.core.util.VectorUtils;
@@ -17,7 +14,7 @@ import java.util.*;
 import java.util.function.Supplier;
 
 public final class ModelGeneration implements Supplier<JsonObject> {
-    @NotNull
+    @Nullable
     private final Key parentModelPath;
     @Nullable
     private final Map<String, String> texturesOverride;
@@ -26,24 +23,55 @@ public final class ModelGeneration implements Supplier<JsonObject> {
     @Nullable
     private final GuiLight guiLight;
     @Nullable
+    private final Boolean ambientOcclusion;
+    @Nullable
+    private final JsonObject rawModel;
+    @Nullable
+    private final Map<Key, byte[]> rawTextures;
+    @Nullable
     private JsonObject cachedModel;
 
     public ModelGeneration(@NotNull Key parentModelPath,
                            @Nullable Map<String, String> texturesOverride,
                            @Nullable Map<DisplayPosition, DisplayMeta> displays,
-                           @Nullable GuiLight guiLight) {
+                           @Nullable GuiLight guiLight,
+                           @Nullable Boolean ambientOcclusion) {
         this.parentModelPath = parentModelPath;
         this.texturesOverride = texturesOverride;
         this.displays = displays;
         this.guiLight = guiLight;
+        this.ambientOcclusion = ambientOcclusion;
+        this.rawModel = null;
+        this.rawTextures = null;
     }
 
-    private static final String[] GUI_LIGHT = new String[]{"gui_light", "gui-light"};
+    private ModelGeneration(@NotNull JsonObject rawModel, @Nullable Map<Key, byte[]> rawTextures) {
+        this.parentModelPath = null;
+        this.texturesOverride = null;
+        this.displays = null;
+        this.guiLight = null;
+        this.ambientOcclusion = null;
+        this.rawModel = rawModel;
+        this.rawTextures = rawTextures;
+    }
+
+    public static ModelGeneration raw(JsonObject model, Map<Key, byte[]> textures) {
+        return new ModelGeneration(model, textures);
+    }
+
+    @NotNull
+    public Map<Key, byte[]> rawTextures() {
+        return this.rawTextures != null ? this.rawTextures : Map.of();
+    }
+
+    private static final String[] GUI_LIGHT = ConfigKeys.of("gui_light");
+    private static final String[] AMBIENT_OCCLUSION = ConfigKeys.of("ambientocclusion|ambient_occlusion");
 
     public static ModelGeneration of(ConfigSection section) {
         return builder()
                 .parentModelPath(section.getNonNullIdentifier("parent"))
                 .guiLight(section.getEnum(GUI_LIGHT, GuiLight.class))
+                .ambientOcclusion(section.getValue(AMBIENT_OCCLUSION, v -> v.getAsBoolean()))
                 .displays(section.getValue("display", v -> {
                     Map<DisplayPosition, DisplayMeta> displays = new EnumMap<>(DisplayPosition.class);
                     ConfigSection displaySection = v.getAsSection();
@@ -81,6 +109,7 @@ public final class ModelGeneration implements Supplier<JsonObject> {
         return this.texturesOverride;
     }
 
+    @Nullable
     public Key parentModelPath() {
         return this.parentModelPath;
     }
@@ -95,8 +124,16 @@ public final class ModelGeneration implements Supplier<JsonObject> {
         return this.guiLight;
     }
 
+    @Nullable
+    public Boolean ambientOcclusion() {
+        return this.ambientOcclusion;
+    }
+
     @Override
     public JsonObject get() {
+        if (this.rawModel != null) {
+            return this.rawModel;
+        }
         if (this.cachedModel == null) {
             this.cachedModel = this.getCachedModel();
         }
@@ -131,25 +168,16 @@ public final class ModelGeneration implements Supplier<JsonObject> {
         if (this.guiLight != null) {
             model.addProperty("gui_light", this.guiLight.name().toLowerCase(Locale.ROOT));
         }
+        if (this.ambientOcclusion != null) {
+            model.addProperty("ambientocclusion", this.ambientOcclusion);
+        }
         return model;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        ModelGeneration that = (ModelGeneration) o;
-        return parentModelPath.equals(that.parentModelPath) && Objects.equals(texturesOverride, that.texturesOverride)
-                && Objects.equals(displays, that.displays) && Objects.equals(guiLight, that.guiLight);
-    }
-
-    @Override
-    public int hashCode() {
-        int i = this.parentModelPath.hashCode();
-        if (this.texturesOverride != null) {
-            i += 31 * this.texturesOverride.hashCode();
-        }
-        return i;
+    public boolean isSameJsonModel(ModelGeneration that) {
+        return Objects.equals(parentModelPath, that.parentModelPath) && Objects.equals(texturesOverride, that.texturesOverride)
+                && Objects.equals(displays, that.displays) && Objects.equals(guiLight, that.guiLight)
+                && Objects.equals(ambientOcclusion, that.ambientOcclusion) && Objects.equals(rawModel, that.rawModel);
     }
 
     public static Builder builder() {
@@ -164,6 +192,8 @@ public final class ModelGeneration implements Supplier<JsonObject> {
         private Map<DisplayPosition, DisplayMeta> displays;
         @Nullable
         private GuiLight guiLight;
+        @Nullable
+        private Boolean ambientOcclusion;
 
         public Builder() {
         }
@@ -188,8 +218,13 @@ public final class ModelGeneration implements Supplier<JsonObject> {
             return this;
         }
 
+        public Builder ambientOcclusion(Boolean ambientOcclusion) {
+            this.ambientOcclusion = ambientOcclusion;
+            return this;
+        }
+
         public ModelGeneration build() {
-            return new ModelGeneration(this.parentModelPath, this.texturesOverride, this.displays, this.guiLight);
+            return new ModelGeneration(this.parentModelPath, this.texturesOverride, this.displays, this.guiLight, this.ambientOcclusion);
         }
     }
 }

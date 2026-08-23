@@ -42,6 +42,7 @@ public final class BukkitCommandManager extends AbstractCommandManager<CommandSe
                 new SearchUsagePlayerCommand(this, plugin),
                 new SearchRecipeAdminCommand(this, plugin),
                 new SearchUsageAdminCommand(this, plugin),
+                new SearchResourceCommand(this, plugin),
                 new TestCommand(this, plugin),
                 new SetLocaleCommand(this, plugin),
                 new SetDisplayEntityViewDistanceScaleCommand(this, plugin),
@@ -53,18 +54,20 @@ public final class BukkitCommandManager extends AbstractCommandManager<CommandSe
                 new DebugVisualStateUsageCommand(this, plugin),
                 new DebugAutoStateUsageCommand(this, plugin),
                 new DebugClearCooldownCommand(this, plugin),
+                new DebugExpressionCommand(this, plugin),
                 new DebugEntityIdCommand(this, plugin),
                 new DebugFurnitureCommand(this, plugin),
                 new DebugRealStateUsageCommand(this, plugin),
                 new DebugItemDataCommand(this, plugin),
+                new DebugItemComponentCommand(this, plugin),
                 new DebugSetBlockCommand(this, plugin),
                 new DebugSpawnFurnitureCommand(this, plugin),
                 new DebugTargetBlockCommand(this, plugin),
                 new DebugIsSectionInjectedCommand(this, plugin),
-                new DebugMigrateTemplatesCommand(this, plugin),
                 new DebugIsChunkPersistentLoadedCommand(this, plugin),
                 new DebugOptimizeFurnitureStructureCommand(this, plugin),
                 new TotemAnimationCommand(this, plugin),
+                new EnchantCommand(this, plugin),
                 new ToastCommand(this, plugin),
                 new EnableResourceCommand(this, plugin),
                 new DisableResourceCommand(this, plugin),
@@ -83,7 +86,9 @@ public final class BukkitCommandManager extends AbstractCommandManager<CommandSe
                 new SetItemItemModelCommand(this, plugin),
                 new RemoveItemComponentCommand(this, plugin),
                 new MigrateWorldStorageCommand(this, plugin),
-                new WorldSettingsCommand(this, plugin)
+                new ClearWorldStorageCommand(this, plugin),
+                new WorldSettingsCommand(this, plugin),
+                new SetDamageVisibilityCommand(this, plugin)
         ));
         final LegacyPaperCommandManager<CommandSender> manager = (LegacyPaperCommandManager<CommandSender>) getCommandManager();
         manager.settings().set(ManagerSetting.ALLOW_UNSAFE_REGISTRATION, true);

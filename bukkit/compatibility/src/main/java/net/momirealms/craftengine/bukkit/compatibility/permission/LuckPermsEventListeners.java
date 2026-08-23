@@ -7,6 +7,7 @@ import net.luckperms.api.event.user.UserDataRecalculateEvent;
 import net.luckperms.api.model.user.User;
 import net.momirealms.craftengine.bukkit.api.BukkitAdaptor;
 import net.momirealms.craftengine.bukkit.plugin.user.BukkitServerPlayer;
+import net.momirealms.craftengine.bukkit.util.ServerUtils;
 import net.momirealms.craftengine.core.entity.player.Player;
 import net.momirealms.craftengine.core.plugin.CraftEngine;
 import org.bukkit.Bukkit;
@@ -14,7 +15,9 @@ import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.UUID;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 public final class LuckPermsEventListeners {
@@ -34,6 +37,15 @@ public final class LuckPermsEventListeners {
         }
     }
 
+    static void submitIfActive(BooleanSupplier active, Runnable submission) {
+        if (!active.getAsBoolean()) return;
+        try {
+            submission.run();
+        } catch (RejectedExecutionException e) {
+            if (active.getAsBoolean()) throw e;
+        }
+    }
+
     @SuppressWarnings("resource")
     private void registerEventListeners() {
         EventBus eventBus = this.luckPerms.getEventBus();
@@ -43,28 +55,36 @@ public final class LuckPermsEventListeners {
 
     private void onUserPermissionChange(UserDataRecalculateEvent event) {
         UUID uniqueId = event.getUser().getUniqueId();
-        CraftEngine.instance().scheduler().async().execute(() -> {
-            Player player = CraftEngine.instance().platform().getPlayer(uniqueId);
-            if (player == null) return;
-            this.playerCallback.accept(player);
-        });
+        submitIfActive(this::isActive, () ->
+                CraftEngine.instance().scheduler().async().execute(() -> {
+                    Player player = CraftEngine.instance().platform().getPlayer(uniqueId);
+                    if (player == null) return;
+                    this.playerCallback.accept(player);
+                })
+        );
     }
 
     private void onGroupPermissionChange(GroupDataRecalculateEvent event) {
-        CraftEngine.instance().scheduler().asyncLater(() -> {
-            String groupName = event.getGroup().getName();
-            Bukkit.getOnlinePlayers().forEach(player -> {
-                UUID uuid = player.getUniqueId();
-                User user = luckPerms.getUserManager().getUser(uuid);
-                if (user == null) return;
-                boolean inGroup = user.getInheritedGroups(user.getQueryOptions()).stream()
-                        .anyMatch(g -> g.getName().equals(groupName));
-                if (inGroup) {
-                    BukkitServerPlayer serverPlayer = BukkitAdaptor.adapt(player);
-                    if (serverPlayer == null) return;
-                    this.playerCallback.accept(serverPlayer);
-                }
-            });
-        }, 1L, TimeUnit.SECONDS);
+        submitIfActive(this::isActive, () ->
+                CraftEngine.instance().scheduler().asyncLater(() -> {
+                    String groupName = event.getGroup().getName();
+                    Bukkit.getOnlinePlayers().forEach(player -> {
+                        UUID uuid = player.getUniqueId();
+                        User user = luckPerms.getUserManager().getUser(uuid);
+                        if (user == null) return;
+                        boolean inGroup = user.getInheritedGroups(user.getQueryOptions()).stream()
+                                .anyMatch(g -> g.getName().equals(groupName));
+                        if (inGroup) {
+                            BukkitServerPlayer serverPlayer = BukkitAdaptor.adapt(player);
+                            if (serverPlayer == null) return;
+                            this.playerCallback.accept(serverPlayer);
+                        }
+                    });
+                }, 1L, TimeUnit.SECONDS)
+        );
+    }
+
+    private boolean isActive() {
+        return this.plugin.isEnabled() && !ServerUtils.isStopping();
     }
 }

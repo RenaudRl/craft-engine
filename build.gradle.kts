@@ -17,9 +17,9 @@ subprojects {
     }
 
     repositories {
-        // Le fork MiniPlaceholders publie sous les coordonnees amont, que Maven Central sert
-        // aussi. exclusiveContent epingle le module au depot BTC pour que l'artefact public ne
-        // puisse jamais masquer le fork en silence.
+        // The BTC fork of MiniPlaceholders publishes under the upstream coordinates, which Maven
+        // Central also serves. exclusiveContent pins the module to the BTC repo so the public
+        // artifact can never silently shadow the fork.
         exclusiveContent {
             forRepository {
                 maven {

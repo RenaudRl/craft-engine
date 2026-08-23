@@ -1,7 +1,7 @@
 package net.momirealms.craftengine.core.plugin.network;
 
-import net.kyori.adventure.text.minimessage.internal.parser.Token;
-import net.kyori.adventure.text.minimessage.internal.parser.TokenParser;
+import com.google.gson.JsonElement;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.momirealms.craftengine.core.font.BitmapImage;
 import net.momirealms.craftengine.core.font.Image;
 import net.momirealms.craftengine.core.font.OffsetFont;
@@ -11,10 +11,10 @@ import net.momirealms.craftengine.core.plugin.text.component.ComponentProvider;
 import net.momirealms.craftengine.core.util.CharacterUtils;
 import net.momirealms.craftengine.core.util.Key;
 import net.momirealms.craftengine.core.util.MiscUtils;
+import net.momirealms.sparrow.message.internal.parser.Token;
+import net.momirealms.sparrow.message.internal.parser.TokenParser;
 
 import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.Predicate;
 
 public abstract class AbstractNetworkManager implements NetworkManager {
     protected Map<String, ComponentProvider> networkTagMapper = new HashMap<>(1024);
@@ -43,34 +43,8 @@ public abstract class AbstractNetworkManager implements NetworkManager {
         it.add("l10n");
         it.add("shift");
         it.add("global");
+        it.add("papi");
     });
-
-    /**
-     * Extra predicates deciding whether a tag is viewer-dependent.
-     *
-     * <p>{@link #NETWORK_TAGS} lists tags CraftEngine owns, which is a closed set. The
-     * {@code papi} entry that used to sit there covered every PlaceholderAPI placeholder at once;
-     * MiniPlaceholders instead contributes one {@code expansion_key} tag per placeholder, and
-     * which ones exist depends on the installed plugins. A platform hook registers a predicate
-     * rather than trying to enumerate them.</p>
-     */
-    private static final List<Predicate<String>> NETWORK_TAG_PREDICATES = new CopyOnWriteArrayList<>();
-
-    public static void registerNetworkTagPredicate(Predicate<String> predicate) {
-        NETWORK_TAG_PREDICATES.add(predicate);
-    }
-
-    private static boolean isNetworkTag(String sanitized) {
-        if (NETWORK_TAGS.contains(sanitized)) {
-            return true;
-        }
-        for (Predicate<String> predicate : NETWORK_TAG_PREDICATES) {
-            if (predicate.test(sanitized)) {
-                return true;
-            }
-        }
-        return false;
-    }
 
     private static String imageTag(String text) {
         return "<image:" + text + ">";
@@ -131,10 +105,9 @@ public abstract class AbstractNetworkManager implements NetworkManager {
 
     @SuppressWarnings("UnstableApiUsage")
     @Override
-    public Map<String, ComponentProvider> matchNetworkTags(String text) {
-        Map<String, ComponentProvider> tags = new HashMap<>();
+    public boolean hasNetworkTag(String text) {
         List<Token> root = TokenParser.tokenize(text, true);
-        for (final net.kyori.adventure.text.minimessage.internal.parser.Token token : root) {
+        for (final Token token : root) {
             switch (token.type()) {
                 case TEXT: break;
                 case OPEN_TAG:
@@ -144,8 +117,65 @@ public abstract class AbstractNetworkManager implements NetworkManager {
                         continue;
                     }
                     final String sanitized = TokenParser.TagProvider.sanitizePlaceholderName(token.childTokens().getFirst().get(text).toString());
-                    if (isNetworkTag(sanitized)) {
+                    if (NETWORK_TAGS.contains(sanitized)) {
+                        return true;
+                    }
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unsupported token type " + token.type());
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public Map<String, ComponentProvider> matchNetworkTags(String text) {
+        Map<String, ComponentProvider> tags = matchNetworkTags(text, null);
+        return tags == null ? Collections.emptyMap() : tags;
+    }
+
+    @Override
+    public Map<String, ComponentProvider> matchNetworkTags(JsonElement json) {
+        Map<String, ComponentProvider> tags = matchNetworkTags(json, null);
+        return tags == null ? Collections.emptyMap() : tags;
+    }
+
+    private Map<String, ComponentProvider> matchNetworkTags(JsonElement json, Map<String, ComponentProvider> tags) {
+        if (json == null || json.isJsonNull()) {
+            return tags;
+        }
+        if (json.isJsonArray()) {
+            for (JsonElement element : json.getAsJsonArray()) {
+                tags = matchNetworkTags(element, tags);
+            }
+        } else if (json.isJsonObject()) {
+            for (JsonElement value : json.getAsJsonObject().asMap().values()) {
+                tags = matchNetworkTags(value, tags);
+            }
+        } else if (json.isJsonPrimitive() && json.getAsJsonPrimitive().isString()) {
+            tags = matchNetworkTags(json.getAsString(), tags);
+        }
+        return tags;
+    }
+
+    @SuppressWarnings("UnstableApiUsage")
+    private Map<String, ComponentProvider> matchNetworkTags(String text, Map<String, ComponentProvider> tags) {
+        List<Token> root = TokenParser.tokenize(text, true);
+        for (final Token token : root) {
+            switch (token.type()) {
+                case TEXT: break;
+                case OPEN_TAG:
+                case CLOSE_TAG:
+                case OPEN_CLOSE_TAG:
+                    if (token.childTokens().isEmpty()) {
+                        continue;
+                    }
+                    final String sanitized = TokenParser.TagProvider.sanitizePlaceholderName(token.childTokens().getFirst().get(text).toString());
+                    if (NETWORK_TAGS.contains(sanitized)) {
                         String tag = text.substring(token.startIndex(), token.endIndex());
+                        if (tags == null) {
+                            tags = new Object2ObjectOpenHashMap<>(4);
+                        }
                         tags.computeIfAbsent(tag, k -> {
                             ComponentProvider provider = this.networkTagMapper.get(k);
                             if (provider != null) {

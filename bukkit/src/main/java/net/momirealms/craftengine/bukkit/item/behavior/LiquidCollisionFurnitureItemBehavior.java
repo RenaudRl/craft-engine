@@ -12,10 +12,12 @@ import net.momirealms.craftengine.core.item.behavior.ItemBehaviorFactory;
 import net.momirealms.craftengine.core.pack.Pack;
 import net.momirealms.craftengine.core.pack.PendingConfigSection;
 import net.momirealms.craftengine.core.plugin.config.ConfigConstants;
+import net.momirealms.craftengine.core.plugin.config.ConfigKeys;
 import net.momirealms.craftengine.core.plugin.config.ConfigSection;
 import net.momirealms.craftengine.core.plugin.config.ConfigValue;
 import net.momirealms.craftengine.core.util.Direction;
 import net.momirealms.craftengine.core.util.Key;
+import net.momirealms.craftengine.core.util.LazyReference;
 import net.momirealms.craftengine.core.world.BlockHitResult;
 import net.momirealms.craftengine.core.world.BlockPos;
 import net.momirealms.craftengine.core.world.Vec3d;
@@ -35,14 +37,15 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class LiquidCollisionFurnitureItemBehavior extends FurnitureItemBehavior {
     public static final ItemBehaviorFactory<LiquidCollisionFurnitureItemBehavior> FACTORY = new Factory();
     private final List<String> liquidTypes;
     private final boolean sourceOnly;
 
-    private LiquidCollisionFurnitureItemBehavior(Key id, Map<String, Rule> rules, boolean ignorePlacer, boolean ignoreEntities, boolean sourceOnly, List<String> liquidTypes) {
-        super(id, rules, ignorePlacer, ignoreEntities);
+    private LiquidCollisionFurnitureItemBehavior(Key id, Map<String, Rule> rules, boolean ignorePlacer, boolean ignoreEntities, boolean sourceOnly, List<String> liquidTypes, List<Object> tagsCanPlaceAgainst, LazyReference<Set<Object>> blockStatesCanPlaceAgainst, boolean blacklistMode) {
+        super(id, rules, ignorePlacer, ignoreEntities, tagsCanPlaceAgainst, blockStatesCanPlaceAgainst, blacklistMode);
         this.liquidTypes = liquidTypes;
         this.sourceOnly = sourceOnly;
     }
@@ -55,7 +58,7 @@ public final class LiquidCollisionFurnitureItemBehavior extends FurnitureItemBeh
     @Override
     public InteractionResult use(World world, @Nullable Player player, InteractionHand hand) {
         if (player == null) return InteractionResult.FAIL;
-        Object blockHitResult = ItemProxy.INSTANCE.getPlayerPOVHitResult(world.minecraftWorld(), player.serverPlayer(), ClipContextProxy.FluidProxy.ANY);
+        Object blockHitResult = ItemProxy.INSTANCE.getPlayerPOVHitResult(world.minecraftWorld(), player.minecraftPlayer(), ClipContextProxy.FluidProxy.ANY);
         Object blockPos = BlockHitResultProxy.INSTANCE.getBlockPos(blockHitResult);
         BlockPos above = new BlockPos(Vec3iProxy.INSTANCE.getX(blockPos), Vec3iProxy.INSTANCE.getY(blockPos), Vec3iProxy.INSTANCE.getZ(blockPos));
         Direction direction = DirectionUtils.fromNMSDirection(BlockHitResultProxy.INSTANCE.getDirection(blockHitResult));
@@ -130,19 +133,23 @@ public final class LiquidCollisionFurnitureItemBehavior extends FurnitureItemBeh
                     rules.put(variant, new Rule(alignmentRule, rotationRule));
                 }
             }
+            FurnitureItemBehavior.TagsAndState againstTagsAndState = FurnitureItemBehavior.readAgainstBlockConfig(section);
             return new LiquidCollisionFurnitureItemBehavior(
                     furnitureId,
                     rules,
                     section.getBoolean(IGNORE_PLACER),
                     section.getBoolean(IGNORE_ENTITIES),
                     section.getBoolean(SOURCE_ONLY, true),
-                    section.getStringList(LIQUID_TYPE)
+                    section.getStringList(LIQUID_TYPE),
+                    againstTagsAndState.tags(),
+                    againstTagsAndState.blockStates(),
+                    section.getBoolean("blacklist", true)
             );
         }
 
-        private static final String[] IGNORE_PLACER = new String[]{"ignore_placer", "ignore-placer"};
-        private static final String[] IGNORE_ENTITIES = new String[]{"ignore_entities", "ignore-entities"};
-        private static final String[] SOURCE_ONLY = new String[]{"source_only", "source-only"};
-        private static final String[] LIQUID_TYPE = new String[]{"liquid_type", "liquid-type"};
+        private static final String[] IGNORE_PLACER = ConfigKeys.of("ignore_placer");
+        private static final String[] IGNORE_ENTITIES = ConfigKeys.of("ignore_entities");
+        private static final String[] SOURCE_ONLY = ConfigKeys.of("source_only");
+        private static final String[] LIQUID_TYPE = ConfigKeys.of("liquid_type");
     }
 }

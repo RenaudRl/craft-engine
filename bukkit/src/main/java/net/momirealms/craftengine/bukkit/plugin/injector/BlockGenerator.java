@@ -14,6 +14,8 @@ import net.bytebuddy.implementation.bind.annotation.This;
 import net.bytebuddy.matcher.ElementMatchers;
 import net.momirealms.craftengine.bukkit.block.BukkitBlockShape;
 import net.momirealms.craftengine.bukkit.block.behavior.EmptyBlockBehavior;
+import net.momirealms.craftengine.bukkit.block.behavior.LiquidSolidifiableBlock;
+import net.momirealms.craftengine.bukkit.block.LiquidSolidification;
 import net.momirealms.craftengine.bukkit.util.KeyUtils;
 import net.momirealms.craftengine.bukkit.util.NoteBlockChainUpdateUtils;
 import net.momirealms.craftengine.core.block.BlockShape;
@@ -54,7 +56,7 @@ public final class BlockGenerator {
     private static SBooleanField field$CraftEngineBlock$isTripwire;
 
     public static void init() {
-        ByteBuddy byteBuddy = new ByteBuddy(ClassFileVersion.JAVA_V17);
+        ByteBuddy byteBuddy = new ByteBuddy(ClassFileVersion.JAVA_V21);
         // CraftEngine Blocks
         String packageWithName = BlockGenerator.class.getName();
         String generatedClassName = packageWithName.substring(0, packageWithName.lastIndexOf('.')) + ".CraftEngineBlock";
@@ -423,12 +425,16 @@ public final class BlockGenerator {
         @RuntimeType
         public void intercept(@This Object thisBlock, @AllArguments Object[] args) {
             ObjectHolder<BlockBehavior> holder = ((DelegatingBlock) thisBlock).behaviorDelegate();
-            if (holder.value() instanceof FallableBlock fallable) {
-                try {
-                    fallable.onLand(thisBlock, args);
-                } catch (Throwable t) {
-                    CraftEngine.instance().logger().error("Failed to run onLand", t);
+            BlockBehavior behavior = holder.value();
+            try {
+                if (behavior instanceof LiquidSolidifiableBlock solidifiable) {
+                    LiquidSolidification.solidifyOnLand(solidifiable, args);
                 }
+                if (behavior instanceof FallableBlock fallable) {
+                    fallable.onLand(thisBlock, args);
+                }
+            } catch (Throwable t) {
+                CraftEngine.instance().logger().error("Failed to run onLand", t);
             }
         }
     }

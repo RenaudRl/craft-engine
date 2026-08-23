@@ -15,10 +15,7 @@ import net.momirealms.craftengine.core.item.equipment.Equipment;
 import net.momirealms.craftengine.core.item.equipment.EquipmentLayerType;
 import net.momirealms.craftengine.core.item.equipment.TrimBasedEquipment;
 import net.momirealms.craftengine.core.item.processor.ObfuscatedItemModelProcessor;
-import net.momirealms.craftengine.core.pack.atlas.Atlas;
-import net.momirealms.craftengine.core.pack.atlas.SimplifiedModelFile;
-import net.momirealms.craftengine.core.pack.atlas.TextureStatus;
-import net.momirealms.craftengine.core.pack.atlas.TexturedModel;
+import net.momirealms.craftengine.core.pack.atlas.*;
 import net.momirealms.craftengine.core.pack.conflict.PathContext;
 import net.momirealms.craftengine.core.pack.conflict.resolution.ConditionalResolution;
 import net.momirealms.craftengine.core.pack.host.ResourcePackHost;
@@ -50,6 +47,9 @@ import net.momirealms.craftengine.core.plugin.config.yaml.StringKeyConstructor;
 import net.momirealms.craftengine.core.plugin.locale.ClientLangData;
 import net.momirealms.craftengine.core.plugin.locale.TranslationManager;
 import net.momirealms.craftengine.core.plugin.logger.Debugger;
+import net.momirealms.craftengine.core.registry.BuiltInRegistries;
+import net.momirealms.craftengine.core.registry.Registries;
+import net.momirealms.craftengine.core.registry.WritableRegistry;
 import net.momirealms.craftengine.core.sound.AbstractSoundManager;
 import net.momirealms.craftengine.core.sound.SoundEvent;
 import net.momirealms.craftengine.core.util.*;
@@ -137,7 +137,6 @@ public abstract class AbstractPackManager implements PackManager {
     private final BiConsumer<Path, Path> generationEventDispatcher;
     private final Map<String, Pack> loadedPacks = new LinkedHashMap<>();
     private final Map<String, ConfigParser> sectionParsers = new HashMap<>();
-    private final List<ConfigParser> parsers = new ArrayList<>();
     public final JsonObject vanillaBlockAtlas;
     public final JsonObject vanillaItemAtlas;
     private Map<Path, CachedConfigFile> cachedConfigFiles = Collections.emptyMap();
@@ -146,6 +145,7 @@ public abstract class AbstractPackManager implements PackManager {
     protected ResourcePackHost resourcePackHost;
     private final SkipOptimizationParser skipOptimizationParser = new SkipOptimizationParser();
     private final ConfigFactoryParser bundleParser = new ConfigFactoryParser();
+    private final AtlasConfigParser atlasConfigParser = new AtlasConfigParser();
 
     public AbstractPackManager(CraftEngine plugin, Consumer<PackCacheData> cacheEventDispatcher, BiConsumer<Path, Path> generationEventDispatcher) {
         this.plugin = plugin;
@@ -387,7 +387,7 @@ public abstract class AbstractPackManager implements PackManager {
         for (String id : parser.sectionId()) {
             this.sectionParsers.put(id, parser);
         }
-        this.parsers.add(parser);
+        ((WritableRegistry<ConfigParser>) BuiltInRegistries.CONFIG_PARSER).register(ResourceKey.create(Registries.CONFIG_PARSER.location(), parser.type()), parser);
         return true;
     }
 
@@ -590,6 +590,9 @@ public abstract class AbstractPackManager implements PackManager {
             this.plugin.logger().error("Invalid YAML file found: " + path + ".\n" + e.getMessage() +
                     "\nIt is recommended to use Visual Studio Code as your YAML editor to fix problems more quickly.");
             return null;
+        } catch (Exception e) {
+            this.plugin.logger().error("Error while reading config file: " + path, e);
+            return null;
         }
     }
 
@@ -609,7 +612,7 @@ public abstract class AbstractPackManager implements PackManager {
     private int loadResourceConfigs(Predicate<ConfigParser> predicate) {
         LoadingPyramid pyramid = new LoadingPyramid();
         Map<Path, List<ResourceException>> errorByPath = new ConcurrentHashMap<>();
-        for (ConfigParser parser : this.parsers) {
+        for (ConfigParser parser : BuiltInRegistries.CONFIG_PARSER) {
             if (!predicate.test(parser)) {
                 continue;
             }
@@ -627,6 +630,9 @@ public abstract class AbstractPackManager implements PackManager {
                         cause = cause.getCause();
                     }
                 });
+                if (parser instanceof IdConfigParser idConfigParser) {
+                    idConfigParser.clearIdToPath();
+                }
                 parser.preProcess();
                 parser.loadAll();
                 parser.postProcess();
@@ -660,7 +666,7 @@ public abstract class AbstractPackManager implements PackManager {
 
     @Override
     public void clearResourceConfigs() {
-        for (ConfigParser parser : this.parsers) {
+        for (ConfigParser parser : BuiltInRegistries.CONFIG_PARSER) {
             parser.clearConfigs();
         }
     }
@@ -724,6 +730,7 @@ public abstract class AbstractPackManager implements PackManager {
             this.generateClientLang(generatedPackPath);
             this.generateEquipments(generatedPackPath, revisions::add);
             this.generateParticle(generatedPackPath);
+            this.generateAtlases(generatedPackPath);
 
             // 有地图兼容的情况下，先生成一半
             boolean mapCompatibility = Config.enableMapPluginCompatibility();
@@ -2477,6 +2484,28 @@ public abstract class AbstractPackManager implements PackManager {
         }
     }
 
+    private void generateAtlases(Path generatedPackPath) {
+        Map<Key, List<SpriteSource>> atlases = this.atlasConfigParser.atlases();
+        if (atlases.isEmpty()) return;
+        for (Map.Entry<Key, List<SpriteSource>> entry : atlases.entrySet()) {
+            Key atlasId = entry.getKey();
+            Path atlasPath = generatedPackPath
+                    .resolve("assets")
+                    .resolve(atlasId.namespace())
+                    .resolve("atlases")
+                    .resolve(atlasId.value() + ".json");
+            List<SpriteSource> sources = new ArrayList<>();
+            if (Files.exists(atlasPath)) {
+                JsonObject existing = readJsonObjectFromFileOrWarn(atlasPath);
+                if (existing != null) {
+                    sources.addAll(AtlasParser.parse(existing).sources());
+                }
+            }
+            sources.addAll(entry.getValue());
+            writeJsonSafely(new AtlasData(sources).optimize().get(), atlasPath);
+        }
+    }
+
     private void generateEquipments(Path generatedPackPath, Consumer<Revision> callback) {
         // asset id + 是否有上身 + 是否有腿
         List<Tuple<Key, Boolean, Boolean>> collectedTrims = new ArrayList<>();
@@ -2918,10 +2947,18 @@ public abstract class AbstractPackManager implements PackManager {
             } else {
                 json = new JsonObject();
             }
-            for (Map.Entry<String, String> pair : entry.getValue().translations.entrySet()) {
-                json.addProperty(pair.getKey(), pair.getValue());
+            Map<String, String> sorted = new TreeMap<>();
+            for (Map.Entry<String, JsonElement> existing : json.entrySet()) {
+                if (existing.getValue().isJsonPrimitive()) {
+                    sorted.put(existing.getKey(), existing.getValue().getAsString());
+                }
             }
-            writeJsonSafely(json, langPath);
+            sorted.putAll(entry.getValue().translations);
+            JsonObject sortedJson = new JsonObject();
+            for (Map.Entry<String, String> pair : sorted.entrySet()) {
+                sortedJson.addProperty(pair.getKey(), pair.getValue());
+            }
+            writeJsonSafely(sortedJson, langPath);
         }
     }
 
@@ -2943,10 +2980,18 @@ public abstract class AbstractPackManager implements PackManager {
             } else {
                 soundJson = new JsonObject();
             }
-            for (SoundEvent soundEvent : entry.getValue()) {
-                soundJson.add(soundEvent.id().value(), soundEvent.get());
+            Map<String, JsonElement> sorted = new TreeMap<>();
+            for (Map.Entry<String, JsonElement> existing : soundJson.entrySet()) {
+                sorted.put(existing.getKey(), existing.getValue());
             }
-            writeJsonSafely(soundJson, soundPath);
+            for (SoundEvent soundEvent : entry.getValue()) {
+                sorted.put(soundEvent.id().value(), soundEvent.get());
+            }
+            JsonObject sortedJson = new JsonObject();
+            for (Map.Entry<String, JsonElement> pair : sorted.entrySet()) {
+                sortedJson.add(pair.getKey(), pair.getValue());
+            }
+            writeJsonSafely(sortedJson, soundPath);
         }
     }
 
@@ -3014,7 +3059,15 @@ public abstract class AbstractPackManager implements PackManager {
             }
         }
 
-        writeJsonSafely(soundJson, soundPath);
+        Map<String, JsonElement> sorted = new TreeMap<>();
+        for (Map.Entry<String, JsonElement> existing : soundJson.entrySet()) {
+            sorted.put(existing.getKey(), existing.getValue());
+        }
+        JsonObject sortedJson = new JsonObject();
+        for (Map.Entry<String, JsonElement> pair : sorted.entrySet()) {
+            sortedJson.add(pair.getKey(), pair.getValue());
+        }
+        writeJsonSafely(sortedJson, soundPath);
     }
 
     // 生成 json 模型文件
@@ -3030,6 +3083,23 @@ public abstract class AbstractPackManager implements PackManager {
                 continue;
             }
             writeJsonSafely(entry.getValue().get(), modelPath);
+        }
+        for (Map.Entry<Key, byte[]> entry : generator.texturesToGenerate().entrySet()) {
+            Path texturePath = generatedPackPath
+                    .resolve("assets")
+                    .resolve(entry.getKey().namespace())
+                    .resolve("textures")
+                    .resolve(entry.getKey().value() + ".png");
+            if (Files.exists(texturePath)) {
+                this.plugin.logger().warn(TranslationManager.instance().plainTranslation("resource_pack.texture_generation.conflict", texturePath.toAbsolutePath().toString()));
+                continue;
+            }
+            try {
+                Files.createDirectories(texturePath.getParent());
+                Files.write(texturePath, entry.getValue());
+            } catch (IOException e) {
+                this.plugin.logger().warn("Failed to generate texture " + texturePath.toAbsolutePath(), e);
+            }
         }
     }
 
@@ -3066,13 +3136,12 @@ public abstract class AbstractPackManager implements PackManager {
                 JsonObject newVariants = new JsonObject();
                 if (previousVariants != null) {
                     for (Map.Entry<String, JsonElement> variantEntry : previousVariants.entrySet()) {
-                        String variantName = variantEntry.getKey();
-                        if (!newVariants.has(variantName)) {
-                            newVariants.add(variantName, variantEntry.getValue());
-                        }
+                        newVariants.add(variantEntry.getKey(), variantEntry.getValue());
                     }
                 }
-                for (Map.Entry<String, JsonElement> resourcePathEntry : entry.getValue().entrySet()) {
+                // 新增变体排序后追加在末尾；与旧变体同 key 的仅替换值，保持原位
+                Map<String, JsonElement> sortedNewVariants = new TreeMap<>(entry.getValue());
+                for (Map.Entry<String, JsonElement> resourcePathEntry : sortedNewVariants.entrySet()) {
                     newVariants.add(resourcePathEntry.getKey(), resourcePathEntry.getValue());
                 }
                 stateJson.add("variants", newVariants);
@@ -3386,10 +3455,11 @@ public abstract class AbstractPackManager implements PackManager {
                 fontJson.add("providers", providers);
             }
 
-            for (BitmapImage image : font.bitmapImages()) {
+            List<BitmapImage> sortedImages = new ArrayList<>(font.bitmapImages());
+            sortedImages.sort(Comparator.comparing((BitmapImage image) -> image.id().namespace).thenComparing(image -> image.id().value));
+            for (BitmapImage image : sortedImages) {
                 providers.add(image.get());
             }
-
             try {
                 Files.writeString(fontPath, CharacterUtils.replaceDoubleBackslashU(fontJson.toString()));
             } catch (IOException e) {
@@ -3557,14 +3627,19 @@ public abstract class AbstractPackManager implements PackManager {
 
     @Override
     public ConfigParser[] parsers() {
-        return new ConfigParser[] {this.skipOptimizationParser, this.bundleParser};
+        return new ConfigParser[] {this.skipOptimizationParser, this.bundleParser, this.atlasConfigParser};
     }
 
     public final class ConfigFactoryParser extends SectionConfigParser {
-        private static final String[] SECTION_ID = new String[] {"config-factory", "config_factory", "config-factories", "config_factories"};
-        private static final String[] BLUEPRINT = new String[] {"blueprint", "prototype", "schema"};
-        private static final String[] INSTANCES = new String[] {"instances", "instance", "inputs", "input"};
+        private static final String[] SECTION_ID = ConfigKeys.of("config_factor(y|ies)");
+        private static final String[] BLUEPRINT = ConfigKeys.of("blueprint|prototype|schema");
+        private static final String[] INSTANCES = ConfigKeys.of("instance(s)|input(s)");
         private int count = 0;
+
+        @Override
+        public Key type() {
+            return Key.ce("config_factory");
+        }
 
         @Override
         protected void parseSection(Pack pack, Path path, ConfigSection section) {
@@ -3611,11 +3686,16 @@ public abstract class AbstractPackManager implements PackManager {
     }
 
     public static final class SkipOptimizationParser extends SectionConfigParser {
-        private static final String[] SECTION_ID = new String[] {"skip-optimization", "skip_optimization"};
+        private static final String[] SECTION_ID = ConfigKeys.of("skip_optimization");
         private final Set<String> excludeTexture = new HashSet<>();
         private final Set<String> excludeJson = new HashSet<>();
 
         public SkipOptimizationParser() {
+        }
+
+        @Override
+        public Key type() {
+            return Key.ce("skip_optimization");
         }
 
         public void clearCache() {
@@ -3669,6 +3749,53 @@ public abstract class AbstractPackManager implements PackManager {
         @Override
         public String[] sectionId() {
             return SECTION_ID;
+        }
+    }
+
+    public static final class AtlasConfigParser extends IdSectionConfigParser {
+        private static final String[] SECTION_ID = ConfigKeys.of("atlas(es)");
+        private static final String[] SOURCES = ConfigKeys.of("source(s)");
+        private final Map<Key, List<SpriteSource>> atlases = new HashMap<>();
+
+        @Override
+        public Key type() {
+            return Key.ce("atlas");
+        }
+
+        @Override
+        public String[] sectionId() {
+            return SECTION_ID;
+        }
+
+        @Override
+        public LoadingStage loadingStage() {
+            return LoadingStages.ATLAS;
+        }
+
+        // 同一个图集id允许出现在多个配置中，按加载顺序合并
+        @Override
+        protected boolean checkDuplicated() {
+            return false;
+        }
+
+        @Override
+        public int count() {
+            return this.atlases.size();
+        }
+
+        @Override
+        public boolean supportSearch() {
+            return false;
+        }
+
+        public Map<Key, List<SpriteSource>> atlases() {
+            return this.atlases;
+        }
+
+        @Override
+        public void parseSection(@NotNull Pack pack, @NotNull Path path, @NotNull Key id, @NotNull ConfigSection section) {
+            List<SpriteSource> sources = section.getList(SOURCES, value -> SpriteSource.fromConfig(value.getAsSection()));
+            this.atlases.computeIfAbsent(id, k -> new ArrayList<>()).addAll(sources);
         }
     }
 }

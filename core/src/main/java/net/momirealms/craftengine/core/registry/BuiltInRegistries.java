@@ -1,5 +1,19 @@
 package net.momirealms.craftengine.core.registry;
 
+import net.momirealms.craftengine.core.attribute.base.BaseValueSource;
+import net.momirealms.craftengine.core.attribute.base.BaseValueSourceType;
+import net.momirealms.craftengine.core.attribute.damage.DamageIndicator;
+import net.momirealms.craftengine.core.attribute.damage.DamageIndicatorType;
+import net.momirealms.craftengine.core.attribute.derived.DerivedValue;
+import net.momirealms.craftengine.core.attribute.derived.DerivedValueType;
+import net.momirealms.craftengine.core.attribute.format.ValueFormatter;
+import net.momirealms.craftengine.core.attribute.format.ValueFormatterType;
+import net.momirealms.craftengine.core.attribute.formula.DamageFormula;
+import net.momirealms.craftengine.core.attribute.formula.DamageFormulaType;
+import net.momirealms.craftengine.core.attribute.sync.SyncValueProvider;
+import net.momirealms.craftengine.core.attribute.sync.SyncValueProviderType;
+import net.momirealms.craftengine.core.attribute.transform.ValueTransformer;
+import net.momirealms.craftengine.core.attribute.transform.ValueTransformerType;
 import net.momirealms.craftengine.core.block.BlockDefinition;
 import net.momirealms.craftengine.core.block.behavior.BlockBehavior;
 import net.momirealms.craftengine.core.block.behavior.BlockBehaviorType;
@@ -20,6 +34,8 @@ import net.momirealms.craftengine.core.entity.furniture.hitbox.FurnitureHitBox;
 import net.momirealms.craftengine.core.entity.furniture.hitbox.FurnitureHitboxConfigType;
 import net.momirealms.craftengine.core.entity.furniture.setting.FurnitureSettingsModifier;
 import net.momirealms.craftengine.core.entity.furniture.setting.FurnitureSettingsModifierType;
+import net.momirealms.craftengine.core.entity.setting.EntitySettingsModifier;
+import net.momirealms.craftengine.core.entity.setting.EntitySettingsModifierType;
 import net.momirealms.craftengine.core.item.behavior.ItemBehavior;
 import net.momirealms.craftengine.core.item.behavior.ItemBehaviorType;
 import net.momirealms.craftengine.core.item.equipment.Equipment;
@@ -28,6 +44,8 @@ import net.momirealms.craftengine.core.item.processor.ItemProcessor;
 import net.momirealms.craftengine.core.item.processor.ItemProcessorType;
 import net.momirealms.craftengine.core.item.recipe.Recipe;
 import net.momirealms.craftengine.core.item.recipe.RecipeSerializer;
+import net.momirealms.craftengine.core.item.recipe.predicate.DataComponentPredicate;
+import net.momirealms.craftengine.core.item.recipe.predicate.DataComponentPredicateType;
 import net.momirealms.craftengine.core.item.recipe.remainder.CraftRemainder;
 import net.momirealms.craftengine.core.item.recipe.remainder.CraftRemainderType;
 import net.momirealms.craftengine.core.item.recipe.result.PostProcessor;
@@ -43,6 +61,8 @@ import net.momirealms.craftengine.core.loot.function.LootFunction;
 import net.momirealms.craftengine.core.loot.function.LootFunctionType;
 import net.momirealms.craftengine.core.loot.function.formula.Formula;
 import net.momirealms.craftengine.core.loot.function.formula.FormulaType;
+import net.momirealms.craftengine.core.loot.source.LootSource;
+import net.momirealms.craftengine.core.loot.source.LootSourceType;
 import net.momirealms.craftengine.core.pack.conflict.PathContext;
 import net.momirealms.craftengine.core.pack.conflict.matcher.PathMatcherType;
 import net.momirealms.craftengine.core.pack.conflict.resolution.Resolution;
@@ -61,6 +81,7 @@ import net.momirealms.craftengine.core.pack.model.definition.special.SpecialMode
 import net.momirealms.craftengine.core.pack.model.definition.special.SpecialModelType;
 import net.momirealms.craftengine.core.pack.model.definition.tint.Tint;
 import net.momirealms.craftengine.core.pack.model.definition.tint.TintType;
+import net.momirealms.craftengine.core.plugin.config.ConfigParser;
 import net.momirealms.craftengine.core.plugin.config.template.argument.TemplateArgument;
 import net.momirealms.craftengine.core.plugin.config.template.argument.TemplateArgumentType;
 import net.momirealms.craftengine.core.plugin.context.CommonConditionType;
@@ -88,6 +109,7 @@ import net.momirealms.craftengine.core.util.ResourceKey;
 import java.util.function.Supplier;
 
 public final class BuiltInRegistries {
+    public static final Registry<ConfigParser> CONFIG_PARSER = createConstantBoundRegistry(Registries.CONFIG_PARSER, 32);
     public static final Registry<BlockDefinition> BLOCK = new BlockRegistry<>(Registries.BLOCK, 512);
     public static final Registry<BlockBehaviorType<? extends BlockBehavior>> BLOCK_BEHAVIOR_TYPE = createConstantBoundRegistry(Registries.BLOCK_BEHAVIOR_TYPE, 64);
     public static final Registry<BlockEntityTintSourceType<? extends BlockEntityTintSource>> BLOCK_ENTITY_TINT_SOURCE_TYPE = createConstantBoundRegistry(Registries.BLOCK_ENTITY_TINT_SOURCE_TYPE, 16);
@@ -95,6 +117,13 @@ public final class BuiltInRegistries {
     public static final Registry<ItemBehaviorType<? extends ItemBehavior>> ITEM_BEHAVIOR_TYPE = createConstantBoundRegistry(Registries.ITEM_BEHAVIOR_TYPE, 64);
     public static final Registry<PropertyType<? extends Comparable<?>>> PROPERTY_TYPE = createConstantBoundRegistry(Registries.PROPERTY_TYPE, 16);
     public static final Registry<NumberProviderType<? extends NumberProvider>> NUMBER_PROVIDER_TYPE = createConstantBoundRegistry(Registries.NUMBER_PROVIDER_TYPE, 16);
+    public static final Registry<DamageFormulaType<? extends DamageFormula>> DAMAGE_FORMULA_TYPE = createConstantBoundRegistry(Registries.DAMAGE_FORMULA_TYPE, 4);
+    public static final Registry<DamageIndicatorType<? extends DamageIndicator>> DAMAGE_INDICATOR_TYPE = createConstantBoundRegistry(Registries.DAMAGE_INDICATOR_TYPE, 8);
+    public static final Registry<BaseValueSourceType<? extends BaseValueSource>> BASE_VALUE_SOURCE_TYPE = createConstantBoundRegistry(Registries.BASE_VALUE_SOURCE_TYPE, 8);
+    public static final Registry<DerivedValueType<? extends DerivedValue>> DERIVED_VALUE_TYPE = createConstantBoundRegistry(Registries.DERIVED_VALUE_TYPE, 4);
+    public static final Registry<SyncValueProviderType<? extends SyncValueProvider>> SYNC_VALUE_PROVIDER_TYPE = createConstantBoundRegistry(Registries.SYNC_VALUE_PROVIDER_TYPE, 8);
+    public static final Registry<ValueTransformerType<? extends ValueTransformer>> VALUE_TRANSFORMER_TYPE = createConstantBoundRegistry(Registries.VALUE_TRANSFORMER_TYPE, 8);
+    public static final Registry<ValueFormatterType<? extends ValueFormatter>> VALUE_FORMATTER_TYPE = createConstantBoundRegistry(Registries.VALUE_FORMATTER_TYPE, 8);
     public static final Registry<TemplateArgumentType<? extends TemplateArgument>> TEMPLATE_ARGUMENT_TYPE = createConstantBoundRegistry(Registries.TEMPLATE_ARGUMENT_TYPE, 16);
     public static final Registry<ItemModelType<? extends ItemModel>> ITEM_MODEL_TYPE = createConstantBoundRegistry(Registries.ITEM_MODEL_TYPE, 16);
     public static final Registry<TintType<? extends Tint>> TINT_TYPE = createConstantBoundRegistry(Registries.TINT_TYPE, 16);
@@ -127,13 +156,16 @@ public final class BuiltInRegistries {
     public static final Registry<FurnitureSettingsModifierType<? extends FurnitureSettingsModifier>> FURNITURE_SETTINGS_TYPE = createConstantBoundRegistry(Registries.FURNITURE_SETTINGS_TYPE, 16);
     public static final Registry<BlockSettingsModifierType<? extends BlockSettingsModifier>> BLOCK_SETTINGS_TYPE = createConstantBoundRegistry(Registries.BLOCK_SETTINGS_TYPE, 16);
     public static final Registry<ItemSettingsModifierType<? extends ItemSettingsModifier>> ITEM_SETTINGS_TYPE = createConstantBoundRegistry(Registries.ITEM_SETTINGS_TYPE, 16);
+    public static final Registry<EntitySettingsModifierType<? extends EntitySettingsModifier>> ENTITY_SETTINGS_TYPE = createConstantBoundRegistry(Registries.ENTITY_SETTINGS_TYPE, 16);
     public static final Registry<LootFunctionType<? extends LootFunction>> LOOT_FUNCTION_TYPE = createConstantBoundRegistry(Registries.LOOT_FUNCTION_TYPE, 32);
     public static final Registry<LootEntryContainerType<? extends LootEntryContainer>> LOOT_ENTRY_CONTAINER_TYPE = createConstantBoundRegistry(Registries.LOOT_ENTRY_CONTAINER_TYPE, 16);
+    public static final Registry<LootSourceType<? extends LootSource>> LOOT_SOURCE_TYPE = createConstantBoundRegistry(Registries.LOOT_SOURCE_TYPE, 16);
     public static final Registry<Dialog.Type<? extends Dialog>> DIALOG_TYPE = createConstantBoundRegistry(Registries.DIALOG_TYPE, 16);
     public static final Registry<DialogBody.Type<? extends DialogBody>> DIALOG_BODY_TYPE = createConstantBoundRegistry(Registries.DIALOG_BODY_TYPE, 8);
     public static final Registry<DialogAction.Type<? extends DialogAction>> DIALOG_ACTION_TYPE = createConstantBoundRegistry(Registries.DIALOG_ACTION_TYPE, 8);
     public static final Registry<DialogInputControl.Type<? extends DialogInputControl>> DIALOG_INPUT_CONTROL_TYPE = createConstantBoundRegistry(Registries.DIALOG_INPUT_CONTROL_TYPE, 8);
     public static final Registry<ClickEvent.Type<? extends ClickEvent>> CLICK_EVENT_TYPE = createConstantBoundRegistry(Registries.CLICK_EVENT_TYPE, 16);
+    public static final Registry<DataComponentPredicateType<? extends DataComponentPredicate>> DATA_COMPONENT_PREDICATE_TYPE = createConstantBoundRegistry(Registries.DATA_COMPONENT_PREDICATE_TYPE, 16);
 
     // todo 修改
     public static final Registry<PlayerSelectorType<? extends Context>> PLAYER_SELECTOR_TYPE = createConstantBoundRegistry(Registries.PLAYER_SELECTOR_TYPE, 16);
