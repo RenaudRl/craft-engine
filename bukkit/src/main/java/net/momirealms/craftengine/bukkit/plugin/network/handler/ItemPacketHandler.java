@@ -13,7 +13,6 @@ import net.momirealms.craftengine.core.item.setting.ItemSettings;
 import net.momirealms.craftengine.core.plugin.config.Config;
 import net.momirealms.craftengine.core.plugin.context.ContextHolder;
 import net.momirealms.craftengine.core.plugin.context.NetworkTextReplaceContext;
-import net.momirealms.craftengine.core.plugin.context.PlayerOptionalContext;
 import net.momirealms.craftengine.core.plugin.context.parameter.DirectContextParameters;
 import net.momirealms.craftengine.core.plugin.network.EntityPacketHandler;
 import net.momirealms.craftengine.core.plugin.network.event.ByteBufPacketEvent;
@@ -52,12 +51,14 @@ public final class ItemPacketHandler implements EntityPacketHandler {
                 Object nmsItemStack = EntityUtils.getEntityDataValue(packedItem, ItemEntityData.Item);
                 ItemStack itemStack = ItemStackUtils.getBukkitStack(nmsItemStack);
 
-                // 转换为客户端侧物品
-                Optional<ItemStack> optional = BukkitItemManager.instance().s2c(itemStack, user);
-                if (optional.isPresent()) {
-                    changed = true;
-                    itemStack = optional.get();
-                    SynchedEntityDataProxy.DataValueProxy.INSTANCE.setValue(packedItem, CraftItemStackProxy.INSTANCE.asNMSCopy(itemStack));
+                // 性能模式下 nms 监听器已经转换过，这里已经是客户端侧物品
+                if (!Config.nettyPerformanceModeEntity()) {
+                    Optional<ItemStack> optional = BukkitItemManager.instance().s2c(itemStack, user);
+                    if (optional.isPresent()) {
+                        changed = true;
+                        itemStack = optional.get();
+                        SynchedEntityDataProxy.DataValueProxy.INSTANCE.setValue(packedItem, CraftItemStackProxy.INSTANCE.asNMSCopy(itemStack));
+                    }
                 }
 
                 // 处理 drop-display 物品设置
@@ -82,9 +83,11 @@ public final class ItemPacketHandler implements EntityPacketHandler {
                     } else {
                         hoverComponent = Component.translatable(ItemStackUtils.getDescriptionId(itemStack));
                     }
-                    PlayerOptionalContext context = NetworkTextReplaceContext.of(user, ContextHolder.builder()
-                            .withParameter(DirectContextParameters.COUNT, itemStack.getAmount())
-                            .withParameter(DirectContextParameters.HOVER_COMPONENT, hoverComponent));
+                    NetworkTextReplaceContext context = NetworkTextReplaceContext.of(user, ContextHolder.builder(
+                            DirectContextParameters.PLAYER, user,
+                            DirectContextParameters.COUNT, itemStack.getAmount(),
+                            DirectContextParameters.HOVER_COMPONENT, hoverComponent
+                    ).build());
                     // 展示名称为空，则显示其hover name
                     if (showName.isEmpty()) {
                         nameToShow = hoverComponent;

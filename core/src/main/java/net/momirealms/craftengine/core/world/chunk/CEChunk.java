@@ -19,7 +19,7 @@ import net.momirealms.craftengine.core.entity.culling.CullingData;
 import net.momirealms.craftengine.core.entity.player.Player;
 import net.momirealms.craftengine.core.plugin.CraftEngine;
 import net.momirealms.craftengine.core.plugin.config.Config;
-import net.momirealms.craftengine.core.plugin.context.PlayerOptionalContext;
+import net.momirealms.craftengine.core.plugin.context.PlayerContext;
 import net.momirealms.craftengine.core.plugin.logger.Debugger;
 import net.momirealms.craftengine.core.world.*;
 import net.momirealms.craftengine.core.world.chunk.serialization.DefaultBlockEntityRendererSerializer;
@@ -28,7 +28,10 @@ import net.momirealms.sparrow.nbt.ListTag;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class CEChunk {
@@ -178,7 +181,7 @@ public class CEChunk {
 
     private static void updateBlockEntityVisibility(Player player, ConstantBlockEntityElement before, ConstantBlockEntityElement after) {
         if (before.hasCondition() || after.hasCondition()) {
-            PlayerOptionalContext context = PlayerOptionalContext.ofImmutable(player);
+            PlayerContext context = player.constantContext();
             boolean previousCanSee = before.canSee(context);
             boolean afterCanSee = after.canSee(context);
             if (previousCanSee && afterCanSee) {
@@ -240,7 +243,7 @@ public class CEChunk {
                                                 updateBlockEntityVisibility(player, previousElement, element);
                                             }
                                             if (holder != null) {
-                                                holder.cullable = renderer;
+                                                holder.replace(player, renderer);
                                             } else {
                                                 player.addTrackedBlockEntity(pos, renderer);
                                             }
@@ -263,7 +266,7 @@ public class CEChunk {
                                             previousElement.hide(player);
                                             element.show(player);
                                         }
-                                        holder.cullable = renderer;
+                                        holder.replace(player, renderer);
                                     } else {
                                         player.addTrackedBlockEntity(pos, renderer);
                                     }
@@ -379,7 +382,7 @@ public class CEChunk {
                         for (int i = 0; i < previousObjects.length; i++) {
                             CullableHolder previousHolder = previousObjects[i];
                             if (previousHolder != null) {
-                                previousHolder.cullable = renderer;
+                                previousHolder.replace(trackedBy.get(i), renderer);
                             } else {
                                 if (Config.enableEntityCulling()) {
                                     trackedBy.get(i).addTrackedBlockEntity(pos, renderer);
@@ -618,7 +621,7 @@ public class CEChunk {
                                 previous.hide(player);
                                 renderer.show(player);
                             }
-                            holder.cullable = renderer;
+                            holder.replace(player, renderer);
                             holder.setForceVisible(player, renderer.initialForceVisible(player));
                         } else {
                             player.addTrackedDynamicBlockEntity(blockEntity.pos(), renderer);
@@ -805,6 +808,10 @@ public class CEChunk {
         return this.sections;
     }
 
+    /**
+     * CE 的实体恢复阶段标记：家具批量加载完成或已有区块启动扫描时设为 true，unload 时清除。
+     * 不等同于 Bukkit 的实体磁盘加载状态，更不能据此判断 Paper 是否正在禁止实体增删。
+     */
     public boolean isEntitiesLoaded() {
         return this.isEntitiesLoaded;
     }

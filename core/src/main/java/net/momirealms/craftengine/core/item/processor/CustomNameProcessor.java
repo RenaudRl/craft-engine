@@ -29,14 +29,18 @@ public final class CustomNameProcessor implements SimpleNetworkItemProcessor {
         this.line = FormattedLine.create(this.argument);
     }
 
+    @Override
+    public boolean isConstant() {
+        return this.line.isConstant();
+    }
+
     public String customName() {
         return this.argument;
     }
 
     @Override
-    public Item apply(Item item, ItemBuildContext context) {
-        item.customNameComponent(this.line.parse(context));
-        return item;
+    public void apply(ItemBuildContext context) {
+        context.item().customNameComponent(this.line.parse(context));
     }
 
     @Override

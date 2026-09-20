@@ -192,7 +192,7 @@ public class BukkitEntity implements net.momirealms.craftengine.core.entity.Enti
 
     @Override
     public Set<Player> getTrackedBy() {
-        return EntityUtils.getTrackedBy(this.platformEntity(), BukkitAdaptor::adapt);
+        return EntityUtils.getTrackedBySet(this.platformEntity(), BukkitAdaptor::adapt);
     }
 
     @Override
@@ -213,6 +213,11 @@ public class BukkitEntity implements net.momirealms.craftengine.core.entity.Enti
     @Override
     public Vec3d getEyePos() {
         return getEyePos(minecraftEntity());
+    }
+
+    @Override
+    public Vec3d velocity() {
+        return LocationUtils.fromVec(EntityProxy.INSTANCE.getDeltaMovement(minecraftEntity()));
     }
 
     public Vec3d getEyePos(Object entity) {

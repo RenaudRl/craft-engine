@@ -43,12 +43,25 @@ public final class InsertLoreProcessor implements SimpleNetworkItemProcessor {
     }
 
     @Override
-    public Item apply(Item item, ItemBuildContext context) {
+    public boolean isConstant() {
+        if (this.lores != null) {
+            for (LoreModification modification : this.lores) {
+                if (!modification.isConstant()) {
+                    return false;
+                }
+            }
+        }
+        return this.fallback == null || this.fallback.isConstant();
+    }
+
+    @Override
+    public void apply(ItemBuildContext context) {
         List<Component> loreToInsert = getLore(context).toList();
         if (loreToInsert.isEmpty()) {
-            return item;
+            return;
         }
 
+        Item item = context.item();
         List<Component> originalLore = item.loreComponent().orElse(List.of());
         List<Component> finalLore = new ArrayList<>(originalLore.size() + loreToInsert.size());
 
@@ -80,14 +93,14 @@ public final class InsertLoreProcessor implements SimpleNetworkItemProcessor {
                     finalLore.addAll(originalLore.subList(insertAt, originalLore.size()));
                 } else {
                     if (this.fallback != null) {
-                        return this.fallback.apply(item, context);
+                        this.fallback.apply(context);
                     }
-                    return item;
+                    return;
                 }
             }
         }
 
-        return item.loreComponent(finalLore);
+        item.loreComponent(finalLore);
     }
 
     public enum Position {

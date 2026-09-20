@@ -11,4 +11,4 @@ Fork de **[CraftEngine](https://github.com/Xiao-MoMi/craft-engine)** (Xiao-MoMi)
 ```
 
 ---
-Base upstream : `Xiao-MoMi/craft-engine` (26.7.2) · cible Minecraft **26.2**
+Base upstream : `Xiao-MoMi/craft-engine` (26.9) · cible Minecraft **26.3**
