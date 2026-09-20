@@ -44,14 +44,19 @@ subprojects {
     // BTC Studio unified static Maven repo: committed under BTCVelocity/repo and uploaded
     // as-is to https://borntocraftstudio.net/public/repo/ . Overridable via -PbtcRepoDir
     // so this fork still builds when BTCVelocity is not checked out next to it.
-    extensions.configure<PublishingExtension>("publishing") {
-        repositories {
-            maven {
-                name = "btcRepo"
-                url = uri(
-                    providers.gradleProperty("btcRepoDir")
-                        .getOrElse(rootProject.file("../BTCVelocity/repo").absolutePath)
-                )
+    // Conditionne a maven-publish : depuis la 26.9, l amont n applique plus le plugin
+    // a tous les sous-projets, et une configuration inconditionnelle echouait au
+    // chargement ("Extension with name 'publishing' does not exist").
+    pluginManager.withPlugin("maven-publish") {
+        extensions.configure<PublishingExtension>("publishing") {
+            repositories {
+                maven {
+                    name = "btcRepo"
+                    url = uri(
+                        providers.gradleProperty("btcRepoDir")
+                            .getOrElse(rootProject.file("../BTCVelocity/repo").absolutePath)
+                    )
+                }
             }
         }
     }
