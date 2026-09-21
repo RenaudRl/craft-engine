@@ -19,6 +19,7 @@ import net.momirealms.craftengine.proxy.minecraft.core.HolderProxy;
 import net.momirealms.craftengine.proxy.minecraft.network.protocol.game.*;
 import net.momirealms.craftengine.proxy.minecraft.resources.IdentifierProxy;
 import net.momirealms.craftengine.proxy.minecraft.server.level.ServerPlayerProxy;
+import net.momirealms.craftengine.proxy.minecraft.util.PredictionProxy;
 import net.momirealms.craftengine.proxy.minecraft.sounds.SoundEventProxy;
 import net.momirealms.craftengine.proxy.minecraft.sounds.SoundSourceProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.entity.EntityProxy;
@@ -40,6 +41,19 @@ import java.util.UUID;
 
 public final class PlayerUtils {
     private PlayerUtils() {
+    }
+
+    /**
+     * Drops an item the player just took out of a crafting result slot, as vanilla does for
+     * shift-click overflow. On 26.3 {@code Player#drop(ItemStack, boolean)} is gone: the drop is
+     * "thrown from hand" (stats awarded) and predicted by the client which made the click.
+     */
+    public static void dropCraftedItem(Object serverPlayer, Object minecraftItem) {
+        if (VersionHelper.isOrAbove26_3) {
+            ServerPlayerProxy.INSTANCE.drop$26_3(serverPlayer, minecraftItem, true, PredictionProxy.PREDICTED, true, null);
+        } else {
+            PlayerProxy.INSTANCE.drop(serverPlayer, minecraftItem, true);
+        }
     }
 
     public static void giveItem(@NotNull Player player, int amount, Item original, boolean spawnEntity) {
@@ -103,7 +117,9 @@ public final class PlayerUtils {
             AbstractContainerMenuProxy.INSTANCE.broadcastChanges(PlayerProxy.INSTANCE.getContainerMenu(serverPlayer));
         } else {
             Object droppedItem;
-            if (VersionHelper.isOrAbove1_21_4 && VersionHelper.hasPaperPatch) {
+            if (VersionHelper.isOrAbove26_3) {
+                droppedItem = ServerPlayerProxy.INSTANCE.drop$26_3(serverPlayer, item.minecraftItem(), false, PredictionProxy.SERVER_ONLY, false, null);
+            } else if (VersionHelper.isOrAbove1_21_4 && VersionHelper.hasPaperPatch) {
                 droppedItem = ServerPlayerProxy.INSTANCE.drop(serverPlayer, item.minecraftItem(), false, false, !VersionHelper.isOrAbove1_21_5, null);
             } else if (VersionHelper.isOrAbove1_20_3) {
                 droppedItem = ServerPlayerProxy.INSTANCE.drop$1(serverPlayer, item.minecraftItem(), false, false, true);

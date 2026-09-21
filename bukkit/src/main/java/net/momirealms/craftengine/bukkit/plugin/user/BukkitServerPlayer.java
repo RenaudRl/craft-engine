@@ -91,6 +91,7 @@ import net.momirealms.craftengine.proxy.minecraft.server.network.config.ServerRe
 import net.momirealms.craftengine.proxy.minecraft.sounds.SoundSourceProxy;
 import net.momirealms.craftengine.proxy.minecraft.util.thread.BlockableEventLoopProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.InteractionHandProxy;
+import net.momirealms.craftengine.proxy.minecraft.world.item.component.SwingAnimationProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.effect.MobEffectsProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.entity.EntityProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.entity.EntityTypesProxy;
@@ -479,7 +480,12 @@ public class BukkitServerPlayer extends BukkitLivingEntity implements Player {
 
     @Override
     public void swingHand(InteractionHand hand) {
-        LivingEntityProxy.INSTANCE.swing(minecraftPlayer(), hand == InteractionHand.MAIN_HAND ? InteractionHandProxy.MAIN_HAND : InteractionHandProxy.OFF_HAND, true);
+        Object nmsHand = hand == InteractionHand.MAIN_HAND ? InteractionHandProxy.MAIN_HAND : InteractionHandProxy.OFF_HAND;
+        if (VersionHelper.isOrAbove26_3) {
+            LivingEntityProxy.INSTANCE.swing(minecraftPlayer(), nmsHand, SwingAnimationProxy.DEFAULT, true);
+        } else {
+            LivingEntityProxy.INSTANCE.swing(minecraftPlayer(), nmsHand, true);
+        }
     }
 
     @Override
@@ -1947,7 +1953,7 @@ public class BukkitServerPlayer extends BukkitLivingEntity implements Player {
         Object inventory = PlayerProxy.INSTANCE.getInventory(minecraftPlayer());
         Object inventoryMenu = PlayerProxy.INSTANCE.getInventoryMenu(minecraftPlayer());
         Object craftSlots = InventoryMenuProxy.INSTANCE.getCraftSlots(inventoryMenu);
-        return InventoryProxy.INSTANCE.clearOrCountMatchingItems(inventory, nmsPredicate, count, craftSlots);
+        return InventoryProxy.clearOrCount(inventory, nmsPredicate, count, craftSlots);
     }
 
     @Override

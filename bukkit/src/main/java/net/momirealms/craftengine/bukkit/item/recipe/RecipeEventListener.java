@@ -921,7 +921,7 @@ public final class RecipeEventListener implements Listener {
                     break;
                 }
 
-                PlayerProxy.INSTANCE.drop(mcPlayer, takenItem, true);
+                PlayerUtils.dropCraftedItem(mcPlayer, takenItem);
 
                 // 执行函数
                 PlayerOptionalContext context = PlayerOptionalContext.of(serverPlayer);
@@ -1189,7 +1189,7 @@ public final class RecipeEventListener implements Listener {
                         ceRecipe.takeInput(getSmithingInput(inventory), 1);
                     }
 
-                    PlayerProxy.INSTANCE.drop(mcPlayer, takenItem, true);
+                    PlayerUtils.dropCraftedItem(mcPlayer, takenItem);
 
                     // 有函数的情况下，执行函数
                     if (ceRecipe.hasFunctions()) {
@@ -1447,7 +1447,7 @@ public final class RecipeEventListener implements Listener {
                     break;
                 }
 
-                PlayerProxy.INSTANCE.drop(mcPlayer, takenItem, true);
+                PlayerUtils.dropCraftedItem(mcPlayer, takenItem);
 
                 // 有函数的情况下，执行函数
                 if (runFunctions) {

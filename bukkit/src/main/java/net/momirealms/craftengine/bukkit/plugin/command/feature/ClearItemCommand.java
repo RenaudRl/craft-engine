@@ -79,7 +79,7 @@ public final class ClearItemCommand extends BukkitCommandFeature<CommandSender> 
                         Object serverPlayer = CraftEntityProxy.INSTANCE.getEntity(player);
                         Object inventory = PlayerProxy.INSTANCE.getInventory(serverPlayer);
                         Object inventoryMenu = PlayerProxy.INSTANCE.getInventoryMenu(serverPlayer);
-                        totalCount += InventoryProxy.INSTANCE.clearOrCountMatchingItems(inventory, predicate, amount, InventoryMenuProxy.INSTANCE.getCraftSlots(inventoryMenu));
+                        totalCount += InventoryProxy.clearOrCount(inventory, predicate, amount, InventoryMenuProxy.INSTANCE.getCraftSlots(inventoryMenu));
                         AbstractContainerMenuProxy.INSTANCE.broadcastChanges(PlayerProxy.INSTANCE.getContainerMenu(serverPlayer));
                         InventoryMenuProxy.INSTANCE.slotsChanged(inventoryMenu, inventory);
                     }

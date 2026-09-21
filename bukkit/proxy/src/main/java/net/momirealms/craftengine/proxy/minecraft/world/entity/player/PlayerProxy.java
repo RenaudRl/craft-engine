@@ -38,7 +38,8 @@ public interface PlayerProxy extends LivingEntityProxy {
     @MethodInvoker(name = "drop", activeIf = "max_version=1.20.2")
     Object drop(Object target, @Type(clazz = ItemStackProxy.class) Object droppedItem, boolean dropAround, boolean traceItem, boolean callEvent);
 
-    @MethodInvoker(name = "drop")
+    // Gone in 26.3: drops go through ServerPlayerProxy#drop$26_3 (see PlayerUtils#dropFromHand).
+    @MethodInvoker(name = "drop", activeIf = "max_version=26.2")
     Object drop(Object target, @Type(clazz = ItemStackProxy.class) Object droppedItem, boolean retainOwnership);
 
     @MethodInvoker(name = "getCooldowns")

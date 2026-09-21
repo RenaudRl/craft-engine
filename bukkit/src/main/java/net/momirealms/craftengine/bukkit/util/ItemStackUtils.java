@@ -91,6 +91,10 @@ public final class ItemStackUtils {
         if (CraftItemStackProxy.CLASS.isInstance(itemStack)) {
             return itemStack;
         } else {
+            if (VersionHelper.isOrAbove26_3) {
+                // Same contract as asCraftCopy: an independent CraftItemStack wrapping a copied NMS stack.
+                return CraftItemStackProxy.INSTANCE.asCraftMirror(CraftItemStackProxy.INSTANCE.asNMSCopy(itemStack));
+            }
             return CraftItemStackProxy.INSTANCE.asCraftCopy(itemStack);
         }
     }

@@ -325,6 +325,7 @@ public final class BukkitRecipeManager extends AbstractRecipeManager {
         Set<Key> disabledRecipes = Config.disabledVanillaRecipes();
         boolean hasDisabledAny = !disabledRecipes.isEmpty();
 
+        Map<Key, Integer> unsupportedTypes = new HashMap<>();
         for (Map.Entry<Key, JsonObject> entry : this.lastDatapackRecipes.entrySet()) {
             Key id = entry.getKey();
             if (hasDisabledAny && disabledRecipes.contains(entry.getKey())) {
@@ -338,12 +339,23 @@ public final class BukkitRecipeManager extends AbstractRecipeManager {
                 if (serializer == null) {
                     continue;
                 }
-                Recipe recipe = serializer.readJson(id, jsonObject);
+                Recipe recipe;
+                try {
+                    recipe = serializer.readJson(id, jsonObject);
+                } catch (UnsupportedOperationException e) {
+                    // 26.3 ships data pack recipe types (brewing) whose json CraftEngine cannot read yet:
+                    // vanilla keeps handling them, report the type once instead of one trace per recipe.
+                    unsupportedTypes.merge(serializerType, 1, Integer::sum);
+                    continue;
+                }
                 markAsDataPackRecipe(id);
                 registerRecipeInternal(recipe, false, false);
             } catch (Throwable e) {
                 this.plugin.logger().warn("Failed to load data pack recipe " + id + ". Json: " + jsonObject, e);
             }
+        }
+        for (Map.Entry<Key, Integer> unsupported : unsupportedTypes.entrySet()) {
+            this.plugin.logger().warn("Data pack recipe type " + unsupported.getKey() + " is not handled by CraftEngine, " + unsupported.getValue() + " recipe(s) left to vanilla");
         }
     }
 
@@ -396,7 +408,7 @@ public final class BukkitRecipeManager extends AbstractRecipeManager {
         List<Object> selected = PackRepositoryProxy.INSTANCE.getSelected(packRepository);
         List<Object> packResources = new ArrayList<>();
         for (Object pack : selected) {
-            packResources.add(PackProxy.INSTANCE.open(pack));
+            PackProxy.openInto(pack, packResources);
         }
         Map<Key, JsonObject> recipes = new HashMap<>();
         try (AutoCloseable resourceManager = (AutoCloseable) MultiPackResourceManagerProxy.INSTANCE.newInstance(PackTypeProxy.SERVER_DATA, packResources)) {

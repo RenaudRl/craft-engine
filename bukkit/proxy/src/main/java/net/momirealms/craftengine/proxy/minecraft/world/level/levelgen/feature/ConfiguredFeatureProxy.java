@@ -11,7 +11,11 @@ import net.momirealms.sparrow.reflection.proxy.annotation.MethodInvoker;
 import net.momirealms.sparrow.reflection.proxy.annotation.ReflectionProxy;
 import net.momirealms.sparrow.reflection.proxy.annotation.Type;
 
-@ReflectionProxy(name = "net.minecraft.world.level.levelgen.feature.ConfiguredFeature")
+// 26.3 folded ConfiguredFeature into Feature (a record carrying its own configuration): same
+// CODEC (Codec<Holder<...>>) and the same place(level, generator, random, pos), so the proxy simply
+// targets whichever class exists. ConfiguredFeature is listed first: on 26.2 both classes exist
+// and the 26.2 Feature (the type class) has neither member; on 26.3 only Feature remains.
+@ReflectionProxy(name = {"net.minecraft.world.level.levelgen.feature.ConfiguredFeature", "net.minecraft.world.level.levelgen.feature.Feature"})
 public interface ConfiguredFeatureProxy {
     ConfiguredFeatureProxy INSTANCE = ASMProxyFactory.create(ConfiguredFeatureProxy.class);
     Codec<Object> CODEC = INSTANCE.getCodec();

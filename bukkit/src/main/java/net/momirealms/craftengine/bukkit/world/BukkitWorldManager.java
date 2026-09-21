@@ -1000,6 +1000,9 @@ public final class BukkitWorldManager implements WorldManager, Listener {
             if (value == null) continue;
             result.put(key.replace('-', '_'), processFeatureValue(value));
         }
+        if (VersionHelper.isOrAbove26_3) {
+            upgradeFeatureSectionTo26_3(result);
+        }
         // 处理方块状态
         Object rawName = result.get(BLOCK_ID);
         if (rawName instanceof String blockName) {
@@ -1060,6 +1063,56 @@ public final class BukkitWorldManager implements WorldManager, Listener {
     }
 
     @SuppressWarnings({"DuplicatedCode"})
+    /**
+     * Rewrites a pre-26.3 worldgen section in place so the same YAML loads on both sides of the
+     * upgrade: features are flat records ({@code config} merged into the parent), block states use
+     * {@code id}/{@code properties}, and tree features renamed {@code dirt_provider} to
+     * {@code below_trunk_provider} and dropped {@code force_dirt}; block state provider types lost
+     * their suffix. Sections already written in the
+     * 26.3 shape are left untouched.
+     */
+    // 26.3 dropped the "_state_provider"/"_provider" suffix of block state provider type keys.
+    private static final Map<String, String> BLOCK_STATE_PROVIDER_TYPES_26_3 = Map.of(
+            "minecraft:simple_state_provider", "minecraft:simple",
+            "minecraft:weighted_state_provider", "minecraft:weighted",
+            "minecraft:rule_based_state_provider", "minecraft:rule_based",
+            "minecraft:randomized_int_state_provider", "minecraft:randomized_int",
+            "minecraft:rotated_block_provider", "minecraft:rotated",
+            "minecraft:noise_provider", "minecraft:noise",
+            "minecraft:dual_noise_provider", "minecraft:dual_noise",
+            "minecraft:noise_threshold_provider", "minecraft:noise_threshold"
+    );
+
+    private static void upgradeFeatureSectionTo26_3(Map<String, Object> section) {
+        if (section.get("type") instanceof String type) {
+            String renamed = BLOCK_STATE_PROVIDER_TYPES_26_3.get(type.indexOf(':') < 0 ? "minecraft:" + type : type);
+            if (renamed != null) {
+                section.put("type", renamed);
+            }
+        }
+        if (section.get("config") instanceof Map<?, ?> config && section.containsKey("type")) {
+            section.remove("config");
+            for (Map.Entry<?, ?> entry : config.entrySet()) {
+                section.putIfAbsent(entry.getKey().toString(), entry.getValue());
+            }
+        }
+        Object legacyName = section.remove("Name");
+        if (legacyName != null) {
+            section.putIfAbsent("id", legacyName);
+        }
+        Object legacyProperties = section.remove("Properties");
+        if (legacyProperties != null) {
+            section.putIfAbsent("properties", legacyProperties);
+        }
+        if (section.containsKey("trunk_provider")) {
+            Object dirtProvider = section.remove("dirt_provider");
+            if (dirtProvider != null) {
+                section.putIfAbsent("below_trunk_provider", dirtProvider);
+            }
+            section.remove("force_dirt");
+        }
+    }
+
     private Object processFeatureValue(@NotNull ConfigValue value) {
         if (value.is(Map.class)) {
             return processFeatureSection(value.getAsSection());

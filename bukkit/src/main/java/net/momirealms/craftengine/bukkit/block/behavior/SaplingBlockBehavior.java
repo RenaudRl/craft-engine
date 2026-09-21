@@ -39,6 +39,8 @@ import net.momirealms.craftengine.proxy.minecraft.world.level.*;
 import net.momirealms.craftengine.proxy.minecraft.world.level.block.BlocksProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.level.block.BonemealableBlockProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.level.chunk.ChunkGeneratorProxy;
+import net.momirealms.craftengine.proxy.minecraft.world.level.levelgen.RandomStateProxy;
+import net.momirealms.craftengine.proxy.minecraft.world.level.levelgen.densityfunction.SamplerContextProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.level.levelgen.feature.ConfiguredFeatureProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.level.levelgen.structure.BoundingBoxProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.level.levelgen.structure.StructureProxy;
@@ -152,7 +154,25 @@ public final class SaplingBlockBehavior extends BukkitBlockBehavior implements B
             int z = BlockPosProxy.INSTANCE.getZ(blockPos);
             Object chunkPos = ChunkPosProxy.INSTANCE.newInstance(x >> 4, z >> 4);
             Object start;
-            if (VersionHelper.isOrAbove1_21_4) {
+            if (VersionHelper.isOrAbove26_3) {
+                // 26.3: the climate sampler is created from the random state, as ChunkGenerator does.
+                Object climateSampler = RandomStateProxy.INSTANCE.createClimateSampler(randomState, SamplerContextProxy.simple());
+                start = StructureProxy.INSTANCE.generate$2(structure,
+                        structureHolder,
+                        dimension,
+                        registryAccess,
+                        chunkGenerator,
+                        biomeSource,
+                        climateSampler,
+                        randomState,
+                        manager,
+                        seed,
+                        chunkPos,
+                        0,
+                        level,
+                        b -> true
+                );
+            } else if (VersionHelper.isOrAbove1_21_4) {
                 start = StructureProxy.INSTANCE.generate$1(structure,
                         structureHolder,
                         dimension,

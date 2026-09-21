@@ -478,7 +478,11 @@ public final class BukkitItemManager extends AbstractItemManager {
     }
 
     private Object createTrimMaterial() {
-        if (VersionHelper.isOrAbove1_21_5) {
+        if (VersionHelper.isOrAbove26_3) {
+            // 26.3: trims are palette-based; the custom material points at a palette named after the asset group.
+            Object paletteId = KeyUtils.toIdentifier(Key.of("minecraft", "trim/" + AbstractPackManager.NEW_TRIM_MATERIAL));
+            return TrimMaterialProxy.INSTANCE.newInstance$26_3(paletteId, ComponentProxy.INSTANCE.empty());
+        } else if (VersionHelper.isOrAbove1_21_5) {
             Object assetGroup = MaterialAssetGroupProxy.INSTANCE.create("custom");
             return TrimMaterialProxy.INSTANCE.newInstance(assetGroup, ComponentProxy.INSTANCE.empty());
         } else if (VersionHelper.isOrAbove1_21_4) {

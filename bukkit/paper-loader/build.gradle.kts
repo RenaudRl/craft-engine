@@ -12,6 +12,11 @@ plugins {
 }
 
 repositories {
+    // BTC : le port 26.3 de craft-engine-nms-helper-mojmap n existe que dans mavenLocal
+    // (voir gradle/libs.versions.toml, nms-helper-btc).
+    mavenLocal {
+        content { includeModule("net.momirealms", "craft-engine-nms-helper-mojmap") }
+    }
     maven("https://jitpack.io/")
     maven("https://repo.papermc.io/repository/maven-public/")
     maven("https://repo.momirealms.net/releases/")

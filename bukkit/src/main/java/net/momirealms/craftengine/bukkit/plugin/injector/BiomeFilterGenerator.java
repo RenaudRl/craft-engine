@@ -1,9 +1,11 @@
 package net.momirealms.craftengine.bukkit.plugin.injector;
 
+import com.mojang.serialization.MapCodec;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.ClassFileVersion;
 import net.bytebuddy.description.modifier.FieldManifestation;
 import net.bytebuddy.description.modifier.Visibility;
+import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.implementation.FieldAccessor;
 import net.bytebuddy.implementation.MethodCall;
 import net.bytebuddy.implementation.MethodDelegation;
@@ -12,12 +14,14 @@ import net.bytebuddy.implementation.bind.annotation.FieldValue;
 import net.bytebuddy.implementation.bind.annotation.RuntimeType;
 import net.bytebuddy.matcher.ElementMatchers;
 import net.momirealms.craftengine.core.util.Key;
+import net.momirealms.craftengine.core.util.VersionHelper;
 import net.momirealms.craftengine.proxy.minecraft.core.BlockPosProxy;
 import net.momirealms.craftengine.proxy.minecraft.core.HolderProxy;
 import net.momirealms.craftengine.proxy.minecraft.resources.IdentifierProxy;
 import net.momirealms.craftengine.proxy.minecraft.resources.ResourceKeyProxy;
 import net.momirealms.craftengine.proxy.minecraft.util.RandomSourceProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.level.LevelReaderProxy;
+import net.momirealms.craftengine.proxy.minecraft.world.level.levelgen.placement.BiomeFilterProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.level.levelgen.placement.PlacementContextProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.level.levelgen.placement.PlacementFilterProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.level.levelgen.placement.PlacementModifierProxy;
@@ -33,37 +37,64 @@ import java.util.function.Predicate;
 
 import static java.util.Objects.requireNonNull;
 
+/**
+ * Generates a {@code PlacementFilter} that only lets a feature place in the biomes accepted by a
+ * predicate. Up to 26.2 {@code PlacementFilter} is an abstract class identified by a
+ * {@code PlacementModifierType}; since 26.3 it is an interface identified by its {@code codec()}.
+ */
 public final class BiomeFilterGenerator {
-    public static final Constructor<?> constructor$PlacementFilter = requireNonNull(
-            SparrowClass.of(PlacementFilterProxy.CLASS).getDeclaredConstructor(ConstructorMatcher.takeArguments(new Class<?>[0]))
-    );
     public static final Method method$PlacementFilter$shouldPlace = requireNonNull(
             SparrowClass.of(PlacementFilterProxy.CLASS).getDeclaredMethod(MethodMatcher.takeArguments(PlacementContextProxy.CLASS, RandomSourceProxy.CLASS, BlockPosProxy.CLASS).and(MethodMatcher.returnType(boolean.class)))
     );
-    public static final Method method$PlacementModifier$type = requireNonNull(
-            SparrowClass.of(PlacementModifierProxy.CLASS).getDeclaredMethod(MethodMatcher.takeArguments(new Class<?>[0]).and(MethodMatcher.returnType(PlacementModifierTypeProxy.CLASS)))
-    );
     private static SConstructor1 constructor$CraftEngineBiomeFilter;
     private static Object placementModifierType$BIOME_FILTER;
+    private static MapCodec<Object> codec$BIOME_FILTER;
 
     private BiomeFilterGenerator() {}
 
     public static void init() {
         ByteBuddy byteBuddy = new ByteBuddy(ClassFileVersion.JAVA_V21);
-        placementModifierType$BIOME_FILTER = PlacementModifierTypeProxy.INSTANCE.getBiomeFilter();
         String packageWithName = BiomeFilterGenerator.class.getName();
         String generatedClassName = packageWithName.substring(0, packageWithName.lastIndexOf('.')) + ".CraftEngineBiomeFilter";
-        Class<?> clazz$CraftEngineBiomeFilter = byteBuddy
-                .subclass(PlacementFilterProxy.CLASS)
-                .name(generatedClassName)
-                .defineField("filter", Predicate.class, Visibility.PRIVATE, FieldManifestation.FINAL)
-                .defineConstructor(Visibility.PUBLIC)
-                .withParameters(Predicate.class)
-                .intercept(MethodCall.invoke(constructor$PlacementFilter).andThen(FieldAccessor.ofField("filter").setsArgumentAt(0)))
-                .method(ElementMatchers.is(method$PlacementFilter$shouldPlace))
-                .intercept(MethodDelegation.to(ShouldPlaceInterceptor.class))
-                .method(ElementMatchers.is(method$PlacementModifier$type))
-                .intercept(MethodDelegation.to(TypeInterceptor.class))
+        DynamicType.Builder<?> builder;
+        if (VersionHelper.isOrAbove26_3) {
+            codec$BIOME_FILTER = BiomeFilterProxy.INSTANCE.getCodec();
+            Method method$PlacementModifier$codec = requireNonNull(
+                    SparrowClass.of(PlacementModifierProxy.CLASS).getDeclaredMethod(MethodMatcher.takeArguments(new Class<?>[0]).and(MethodMatcher.returnType(MapCodec.class)))
+            );
+            builder = byteBuddy
+                    .subclass(Object.class)
+                    .implement(PlacementFilterProxy.CLASS)
+                    .name(generatedClassName)
+                    .defineField("filter", Predicate.class, Visibility.PRIVATE, FieldManifestation.FINAL)
+                    .defineConstructor(Visibility.PUBLIC)
+                    .withParameters(Predicate.class)
+                    .intercept(MethodCall.invoke(Object.class.getDeclaredConstructors()[0]).andThen(FieldAccessor.ofField("filter").setsArgumentAt(0)))
+                    .method(ElementMatchers.is(method$PlacementFilter$shouldPlace))
+                    .intercept(MethodDelegation.to(ShouldPlaceInterceptor.class))
+                    .method(ElementMatchers.is(method$PlacementModifier$codec))
+                    .intercept(MethodDelegation.to(CodecInterceptor.class));
+        } else {
+            placementModifierType$BIOME_FILTER = PlacementModifierTypeProxy.INSTANCE.getBiomeFilter();
+            Constructor<?> constructor$PlacementFilter = requireNonNull(
+                    SparrowClass.of(PlacementFilterProxy.CLASS).getDeclaredConstructor(ConstructorMatcher.takeArguments(new Class<?>[0]))
+            );
+            Method method$PlacementModifier$type = requireNonNull(
+                    SparrowClass.of(PlacementModifierProxy.CLASS).getDeclaredMethod(MethodMatcher.takeArguments(new Class<?>[0]).and(MethodMatcher.returnType(PlacementModifierTypeProxy.CLASS)))
+            );
+            builder = byteBuddy
+                    .subclass(PlacementFilterProxy.CLASS)
+                    .name(generatedClassName)
+                    .defineField("filter", Predicate.class, Visibility.PRIVATE, FieldManifestation.FINAL)
+                    .defineConstructor(Visibility.PUBLIC)
+                    .withParameters(Predicate.class)
+                    .intercept(MethodCall.invoke(constructor$PlacementFilter).andThen(FieldAccessor.ofField("filter").setsArgumentAt(0)))
+                    .method(ElementMatchers.is(method$PlacementFilter$shouldPlace))
+                    .intercept(MethodDelegation.to(ShouldPlaceInterceptor.class))
+                    .method(ElementMatchers.is(method$PlacementModifier$type))
+                    .intercept(MethodDelegation.to(TypeInterceptor.class));
+        }
+        Class<?> clazz$CraftEngineBiomeFilter = builder
                 .make()
                 .load(BiomeFilterGenerator.class.getClassLoader())
                 .getLoaded();
@@ -83,6 +114,16 @@ public final class BiomeFilterGenerator {
         @RuntimeType
         public static Object intercept() {
             return placementModifierType$BIOME_FILTER;
+        }
+    }
+
+    public static class CodecInterceptor {
+
+        private CodecInterceptor() {}
+
+        @RuntimeType
+        public static Object intercept() {
+            return codec$BIOME_FILTER;
         }
     }
 

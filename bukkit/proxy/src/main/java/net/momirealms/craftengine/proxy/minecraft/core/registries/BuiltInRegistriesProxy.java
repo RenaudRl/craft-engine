@@ -70,9 +70,11 @@ public interface BuiltInRegistriesProxy {
     @FieldGetter(name = "GAME_EVENT", isStatic = true)
     Object getGameEvent();
 
-    @FieldGetter(name = "BLOCKSTATE_PROVIDER_TYPE", isStatic = true)
+    // 26.3 renamed the field and made the registry hold MapCodecs instead of BlockStateProviderType.
+    @FieldGetter(name = {"BLOCK_STATE_PROVIDER_TYPE", "BLOCKSTATE_PROVIDER_TYPE"}, isStatic = true)
     Object getBlockstateProviderType();
 
-    @FieldGetter(name = "FEATURE", isStatic = true)
+    // 26.3: the built-in registry of feature types is FEATURE_TYPE (MapCodecs); FEATURE became a datapack registry.
+    @FieldGetter(name = {"FEATURE_TYPE", "FEATURE"}, isStatic = true)
     Object getFeature();
 }

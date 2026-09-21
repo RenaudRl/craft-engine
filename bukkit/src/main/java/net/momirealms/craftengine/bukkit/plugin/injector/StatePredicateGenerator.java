@@ -21,8 +21,15 @@ public final class StatePredicateGenerator {
                     .getDeclaredMethod(MethodMatcher.takeArguments(BlockStateProxy.CLASS, BlockGetterProxy.CLASS, BlockPosProxy.CLASS)
                     .and(MethodMatcher.returnType(boolean.class)))
     );
+    public static final Method method$StateArgumentPredicate$test = requireNonNull(
+            SparrowClass.of(BlockBehaviourProxy.StateArgumentPredicateProxy.CLASS)
+                    .getDeclaredMethod(MethodMatcher.takeArguments(BlockStateProxy.CLASS, BlockGetterProxy.CLASS, BlockPosProxy.CLASS, Object.class)
+                    .and(MethodMatcher.returnType(boolean.class)))
+    );
     private static Object alwaysTrue;
     private static Object alwaysFalse;
+    private static Object alwaysTrueWithArgument;
+    private static Object alwaysFalseWithArgument;
 
     private StatePredicateGenerator() {}
 
@@ -32,15 +39,21 @@ public final class StatePredicateGenerator {
         String packageName = packageWithName.substring(0, packageWithName.lastIndexOf('.'));
         alwaysTrue = generate(byteBuddy, packageName + ".CraftEngineAlwaysTrueStatePredicate", true);
         alwaysFalse = generate(byteBuddy, packageName + ".CraftEngineAlwaysFalseStatePredicate", false);
+        alwaysTrueWithArgument = generate(byteBuddy, packageName + ".CraftEngineAlwaysTrueStateArgumentPredicate", BlockBehaviourProxy.StateArgumentPredicateProxy.CLASS, method$StateArgumentPredicate$test, true);
+        alwaysFalseWithArgument = generate(byteBuddy, packageName + ".CraftEngineAlwaysFalseStateArgumentPredicate", BlockBehaviourProxy.StateArgumentPredicateProxy.CLASS, method$StateArgumentPredicate$test, false);
     }
 
     private static Object generate(ByteBuddy byteBuddy, String generatedClassName, boolean trueOrFalse) {
+        return generate(byteBuddy, generatedClassName, BlockBehaviourProxy.StatePredicateProxy.CLASS, method$StatePredicate$test, trueOrFalse);
+    }
+
+    private static Object generate(ByteBuddy byteBuddy, String generatedClassName, Class<?> predicateInterface, Method testMethod, boolean trueOrFalse) {
         try {
             return byteBuddy
                     .subclass(Object.class)
                     .name(generatedClassName)
-                    .implement(BlockBehaviourProxy.StatePredicateProxy.CLASS)
-                    .method(ElementMatchers.is(method$StatePredicate$test))
+                    .implement(predicateInterface)
+                    .method(ElementMatchers.is(testMethod))
                     .intercept(FixedValue.value(trueOrFalse))
                     .make()
                     .load(StatePredicateGenerator.class.getClassLoader())
@@ -58,5 +71,14 @@ public final class StatePredicateGenerator {
 
     public static Object alwaysFalse() {
         return alwaysFalse;
+    }
+
+    /** The {@code StateArgumentPredicate} flavour, for fields that take an extra argument (26.3 {@code isViewBlocking}). */
+    public static Object alwaysTrueWithArgument() {
+        return alwaysTrueWithArgument;
+    }
+
+    public static Object alwaysFalseWithArgument() {
+        return alwaysFalseWithArgument;
     }
 }

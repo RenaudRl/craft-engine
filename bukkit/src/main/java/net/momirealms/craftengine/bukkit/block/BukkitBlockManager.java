@@ -61,6 +61,8 @@ public final class BukkitBlockManager extends AbstractBlockManager {
     public static final Set<Object> CLIENT_SIDE_NOTE_BLOCKS = new HashSet<>(2048, 0.6f);
     private static final Object ALWAYS_FALSE = StatePredicateGenerator.alwaysFalse();
     private static final Object ALWAYS_TRUE = StatePredicateGenerator.alwaysTrue();
+    private static final Object ALWAYS_FALSE_WITH_ARGUMENT = StatePredicateGenerator.alwaysFalseWithArgument();
+    private static final Object ALWAYS_TRUE_WITH_ARGUMENT = StatePredicateGenerator.alwaysTrueWithArgument();
     private static BukkitBlockManager instance;
     private final BukkitCraftEngine plugin;
     // 事件监听器
@@ -300,11 +302,13 @@ public final class BukkitBlockManager extends AbstractBlockManager {
 
             boolean suffocating = settings.isSuffocating() == Tristate.UNDEFINED ? (canBlockView(state.visualBlockState())) : (settings.isSuffocating().asBoolean());
             BlockBehaviourProxy.BlockStateBaseProxy.INSTANCE.setIsSuffocating(nmsState, suffocating ? ALWAYS_TRUE : ALWAYS_FALSE);
+            boolean viewBlocking = settings.isViewBlocking() == Tristate.UNDEFINED ? suffocating : settings.isViewBlocking().asBoolean();
+            // 26.3: isViewBlocking became a StateArgumentPredicate<AABB>.
             BlockBehaviourProxy.BlockStateBaseProxy.INSTANCE.setIsViewBlocking(
                     nmsState,
-                    settings.isViewBlocking() == Tristate.UNDEFINED ?
-                    (suffocating ? ALWAYS_TRUE : ALWAYS_FALSE) :
-                    (settings.isViewBlocking().asBoolean() ? ALWAYS_TRUE : ALWAYS_FALSE)
+                    VersionHelper.isOrAbove26_3
+                            ? (viewBlocking ? ALWAYS_TRUE_WITH_ARGUMENT : ALWAYS_FALSE_WITH_ARGUMENT)
+                            : (viewBlocking ? ALWAYS_TRUE : ALWAYS_FALSE)
             );
 
             DelegatingBlock nmsBlock = (DelegatingBlock) BlockStateUtils.getBlockOwner(nmsState);

@@ -17,8 +17,13 @@ public interface CraftItemStackProxy {
     @FieldGetter(name = "handle")
     Object getHandle(ItemStack target);
 
-    @MethodInvoker(name = "asCraftCopy", isStatic = true)
+    // 26.3: asCraftCopy is gone; every API ItemStack now carries a CraftItemStack delegate,
+    // reachable through getCraftStack (a view, not a copy).
+    @MethodInvoker(name = "asCraftCopy", isStatic = true, activeIf = "max_version=26.2")
     ItemStack asCraftCopy(ItemStack original);
+
+    @MethodInvoker(name = "getCraftStack", isStatic = true, activeIf = "min_version=26.3")
+    ItemStack getCraftStack(ItemStack original);
 
     @MethodInvoker(name = "asNMSCopy", isStatic = true)
     Object asNMSCopy(ItemStack original);

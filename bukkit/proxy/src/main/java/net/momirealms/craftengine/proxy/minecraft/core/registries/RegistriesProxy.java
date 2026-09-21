@@ -1,5 +1,6 @@
 package net.momirealms.craftengine.proxy.minecraft.core.registries;
 
+import net.momirealms.sparrow.reflection.SReflection;
 import net.momirealms.sparrow.reflection.proxy.ASMProxyFactory;
 import net.momirealms.sparrow.reflection.proxy.annotation.FieldGetter;
 import net.momirealms.sparrow.reflection.proxy.annotation.ReflectionProxy;
@@ -19,7 +20,9 @@ public interface RegistriesProxy {
     Object RECIPE_TYPE = INSTANCE.getRecipeType();
     Object DIMENSION_TYPE = INSTANCE.getDimensionType();
     Object DIMENSION = INSTANCE.getDimension();
-    Object CONFIGURED_FEATURE = INSTANCE.getConfiguredFeature();
+    // 26.3 renamed configured features to plain "features" (worldgen/feature). The old FEATURE key
+    // (feature types) still exists in 26.2, so the choice is made by version, not by name fallback.
+    Object CONFIGURED_FEATURE = SReflection.getFilter().test("min_version=26.3") ? INSTANCE.getFeature26_3() : INSTANCE.getConfiguredFeature();
     Object PLACED_FEATURE = INSTANCE.getPlacedFeature();
     Object TRIM_PATTERN = INSTANCE.getTrimPattern();
     Object TRIM_MATERIAL = INSTANCE.getTrimMaterial();
@@ -68,8 +71,12 @@ public interface RegistriesProxy {
     @FieldGetter(name = "DIMENSION", isStatic = true)
     Object getDimension();
 
-    @FieldGetter(name = "CONFIGURED_FEATURE", isStatic = true)
+    @FieldGetter(name = "CONFIGURED_FEATURE", isStatic = true, activeIf = "max_version=26.2")
     Object getConfiguredFeature();
+
+    // 26.3: configured features are simply "features" (worldgen/feature); the type registry moved to FEATURE_TYPE.
+    @FieldGetter(name = "FEATURE", isStatic = true, activeIf = "min_version=26.3")
+    Object getFeature26_3();
 
     @FieldGetter(name = "PLACED_FEATURE", isStatic = true)
     Object getPlacedFeature();
