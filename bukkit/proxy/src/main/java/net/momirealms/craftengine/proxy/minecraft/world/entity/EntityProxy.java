@@ -66,10 +66,12 @@ public interface EntityProxy {
     @FieldSetter(name = "entityData")
     void setEntityData(Object target, Object entityData);
 
-    @FieldGetter(name = "hurtMarked")
+    // 26.3 renamed hurtMarked to syncVelocity (Entity#markHurt() sets it); same meaning: ask the
+    // ServerEntity to resend the entity's velocity to tracking players on its next tick.
+    @FieldGetter(name = {"syncVelocity", "hurtMarked"})
     boolean getHurtMarked(Object target);
 
-    @FieldSetter(name = "hurtMarked")
+    @FieldSetter(name = {"syncVelocity", "hurtMarked"})
     void setHurtMarked(Object target, boolean hurtMarked);
 
     @FieldGetter(name = {"trackedEntity", "tracker"}, activeIf = "has_patch=paper")

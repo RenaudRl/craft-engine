@@ -57,7 +57,8 @@ public interface ItemStackProxy extends DataComponentHolderProxy, ItemInstancePr
     @MethodInvoker(name = "setCount")
     void setCount(Object target, int count);
 
-    @MethodInvoker(name = "getBukkitStack", activeIf = "has_patch=paper")
+    // Paper dropped ItemStack#getBukkitStack in 26.3; ItemStackUtils falls back to the mirror.
+    @MethodInvoker(name = "getBukkitStack", activeIf = "has_patch=paper && max_version=26.2")
     ItemStack getBukkitStack(Object target);
 
     @MethodInvoker(name = "copyWithCount")

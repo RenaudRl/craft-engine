@@ -1,6 +1,7 @@
 package net.momirealms.craftengine.bukkit.block.behavior;
 
 import net.momirealms.craftengine.bukkit.block.BukkitBlockManager;
+import net.momirealms.craftengine.bukkit.util.BonemealUtils;
 import net.momirealms.craftengine.bukkit.util.BlockStateUtils;
 import net.momirealms.craftengine.bukkit.util.DirectionUtils;
 import net.momirealms.craftengine.bukkit.util.LocationUtils;
@@ -138,7 +139,7 @@ public final class VineCropBodyBlockBehavior extends AbstractCanSurviveBlockBeha
             Object headBlockState = LevelReaderProxy.INSTANCE.getBlockState(level, headBlockPos);
             Object headBlock = BlockStateProxy.INSTANCE.getBlock(headBlockState);
             if (BonemealableBlockProxy.CLASS.isInstance(headBlock)) {
-                return BonemealableBlockProxy.INSTANCE.isValidBonemealTarget(headBlock, level, headBlockPos, headBlockState);
+                return BonemealUtils.isValidBonemealTarget(headBlock, level, headBlockPos, headBlockState);
             }
             return false;
         }
@@ -173,7 +174,7 @@ public final class VineCropBodyBlockBehavior extends AbstractCanSurviveBlockBeha
             Object headBlockState = LevelReaderProxy.INSTANCE.getBlockState(level, headBlockPos);
             Object headBlock = BlockStateProxy.INSTANCE.getBlock(headBlockState);
             if (BonemealableBlockProxy.CLASS.isInstance(headBlock)) {
-                BonemealableBlockProxy.INSTANCE.performBonemeal(headBlock, level, randomSource, headBlockPos, headBlockState);
+                BonemealUtils.performBonemeal(headBlock, level, randomSource, headBlockPos, headBlockState);
             }
         }
     }

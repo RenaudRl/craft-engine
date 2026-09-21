@@ -23,6 +23,8 @@ public interface CraftItemStackProxy {
     @MethodInvoker(name = "asNMSCopy", isStatic = true)
     Object asNMSCopy(ItemStack original);
 
-    @MethodInvoker(name = "asCraftMirror", isStatic = true)
+    // Paper 26.3 renamed asCraftMirror to asBukkitMirror (same contract: a Bukkit view over the
+    // live NMS stack, no copy).
+    @MethodInvoker(name = {"asBukkitMirror", "asCraftMirror"}, isStatic = true)
     ItemStack asCraftMirror(@Type(clazz = ItemStackProxy.class) Object original);
 }

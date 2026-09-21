@@ -104,7 +104,8 @@ public final class ItemStackUtils {
     }
 
     public static ItemStack getBukkitStack(Object itemStack) {
-        if (VersionHelper.hasPaperPatch) {
+        // 26.3 Paper has no cached bukkit stack any more: the mirror is the only view left.
+        if (VersionHelper.hasPaperPatch && !VersionHelper.isOrAbove26_3) {
             return ItemStackProxy.INSTANCE.getBukkitStack(itemStack);
         } else {
             return asCraftMirror(itemStack);

@@ -72,9 +72,15 @@ public final class ShulkerFurnitureHitbox extends AbstractFurnitureHitBox {
         if (originalY != processedY) {
             double deltaY = originalY - processedY;
             short ya = (short) (deltaY * 8192);
-            packets.add(ClientboundMoveEntityPacketProxy.PosProxy.INSTANCE.newInstance(
-                    this.entityIds[1], (short) 0, ya, (short) 0, true
-            ));
+            if (VersionHelper.isOrAbove26_3) {
+                packets.add(ClientboundMoveEntityPacketProxy.PosProxy.INSTANCE.newInstance(
+                        this.entityIds[1], VecDeltaProxy.LinearProxy.INSTANCE.newInstance((short) 0, ya, (short) 0), true
+                ));
+            } else {
+                packets.add(ClientboundMoveEntityPacketProxy.PosProxy.INSTANCE.newInstance(
+                        this.entityIds[1], (short) 0, ya, (short) 0, true
+                ));
+            }
         }
         if (VersionHelper.isOrAbove1_20_5 && config.scale != 1) {
             Object attributeIns = AttributeInstanceProxy.INSTANCE.newInstance$0(AttributesProxy.SCALE, $ -> {});

@@ -3,6 +3,7 @@ package net.momirealms.craftengine.bukkit.block.behavior;
 import net.momirealms.antigrieflib.Flag;
 import net.momirealms.craftengine.bukkit.api.BukkitAdaptor;
 import net.momirealms.craftengine.bukkit.plugin.BukkitCraftEngine;
+import net.momirealms.craftengine.bukkit.util.BonemealUtils;
 import net.momirealms.craftengine.bukkit.util.BlockStateUtils;
 import net.momirealms.craftengine.bukkit.util.LocationUtils;
 import net.momirealms.craftengine.bukkit.util.ParticleUtils;
@@ -173,11 +174,7 @@ public final class CropBlockBehavior extends BukkitBlockBehavior implements Bone
         Object visualStateBlock = BlockStateUtils.getBlockOwner(visualState);
         if (BonemealableBlockProxy.CLASS.isInstance(visualStateBlock)) {
             boolean is;
-            if (VersionHelper.isOrAbove1_20_2) {
-                is = BonemealableBlockProxy.INSTANCE.isValidBonemealTarget(visualStateBlock, world.minecraftWorld(), LocationUtils.toBlockPos(pos), visualState);
-            } else {
-                is = BonemealableBlockProxy.INSTANCE.isValidBonemealTarget(visualStateBlock, world.minecraftWorld(), LocationUtils.toBlockPos(pos), visualState, true);
-            }
+            is = BonemealUtils.isValidBonemealTarget(visualStateBlock, world.minecraftWorld(), LocationUtils.toBlockPos(pos), visualState);
             if (!is) {
                 sendSwing = true;
             }
@@ -201,11 +198,7 @@ public final class CropBlockBehavior extends BukkitBlockBehavior implements Bone
         Object visualStateBlock = BlockStateUtils.getBlockOwner(visualState);
         if (BonemealableBlockProxy.CLASS.isInstance(visualStateBlock)) {
             boolean is;
-            if (VersionHelper.isOrAbove1_20_2) {
-                is = BonemealableBlockProxy.INSTANCE.isValidBonemealTarget(visualStateBlock, level, pos, visualState);
-            } else {
-                is = BonemealableBlockProxy.INSTANCE.isValidBonemealTarget(visualStateBlock, level, pos, visualState, true);
-            }
+            is = BonemealUtils.isValidBonemealTarget(visualStateBlock, level, pos, visualState);
             if (!is) {
                 sendParticles = true;
             }

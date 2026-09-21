@@ -30,6 +30,7 @@ import net.momirealms.craftengine.proxy.minecraft.world.entity.EntityProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.entity.LivingEntityProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.entity.PoseProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.entity.PositionMoveRotationProxy;
+import net.momirealms.craftengine.proxy.minecraft.world.entity.PositionPathProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.entity.item.ItemEntityProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.entity.player.PlayerProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.entity.vehicle.DismountHelperProxy;
@@ -67,7 +68,12 @@ public final class EntityUtils {
     private EntityUtils() {}
 
     public static Object createUpdatePosPacket(int entityId, double x, double y, double z, float yRot, float xRot, boolean onGround) {
-        if (VersionHelper.isOrAbove1_21_2) {
+        if (VersionHelper.isOrAbove26_3) {
+            // A linear path is a plain jump to the end position, which is what the packet was before.
+            Object position = Vec3Proxy.INSTANCE.newInstance(x, y, z);
+            Object path = PositionPathProxy.LinearProxy.INSTANCE.newInstance(position);
+            return ClientboundEntityPositionSyncPacketProxy.INSTANCE.newInstance(entityId, path, yRot, xRot, onGround);
+        } else if (VersionHelper.isOrAbove1_21_2) {
             Object position = Vec3Proxy.INSTANCE.newInstance(x, y, z);
             Object values = PositionMoveRotationProxy.INSTANCE.newInstance(position, Vec3Proxy.ZERO, yRot, xRot);
             return ClientboundEntityPositionSyncPacketProxy.INSTANCE.newInstance(entityId, values, onGround);
