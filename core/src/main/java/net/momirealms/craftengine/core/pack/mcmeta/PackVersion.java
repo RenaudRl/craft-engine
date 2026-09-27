@@ -15,6 +15,16 @@ public record PackVersion(int major, int minor) implements Comparable<PackVersio
         this(major, 0);
     }
 
+    /**
+     * Upper bound covering every minor revision of {@code major}. Overlay segments are computed on
+     * major formats only; closing them at {@code [major, 0]} excluded 26.3 (format 97.1), so the
+     * items atlas fix in that overlay never applied and every texture outside {@code item/} rendered
+     * as missing in inventories (BTC, 2026-09-27).
+     */
+    public static PackVersion upToLastMinor(int major) {
+        return new PackVersion(major, Integer.MAX_VALUE);
+    }
+
     @Override
     public int compareTo(@NotNull PackVersion o) {
         // 首先比较 major 版本

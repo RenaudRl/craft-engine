@@ -1613,7 +1613,7 @@ public abstract class AbstractPackManager implements PackManager {
                         .resolve("atlases")
                         .resolve("items.json");
                 writeJsonSafely(entry.atlas(), atlasPath);
-                packOverlays.addOverlay(new Overlay(new PackVersion(min), new PackVersion(max), directoryName));
+                packOverlays.addOverlay(new Overlay(new PackVersion(min), PackVersion.upToLastMinor(max), directoryName));
             }
             // 方块
             for (AtlasFixer.Entry entry : blockFixer.entries()) {
@@ -1634,7 +1634,7 @@ public abstract class AbstractPackManager implements PackManager {
                             .resolve("atlases")
                             .resolve("blocks.json");
                     writeJsonSafely(entry.atlas(), atlasPath);
-                    packOverlays.addOverlay(new Overlay(new PackVersion(min), new PackVersion(max), directoryName));
+                    packOverlays.addOverlay(new Overlay(new PackVersion(min), PackVersion.upToLastMinor(max), directoryName));
                 }
             }
         }
