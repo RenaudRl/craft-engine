@@ -292,7 +292,11 @@ public final class PacketIds1_20_5 implements PacketIds {
 
     @Override
     public int serverboundSwingPacket() {
-        return PacketIdHelper.byName("minecraft:swing", ConnectionState.PLAY, PacketFlow.SERVERBOUND);
+        // 26.3 renamed the arm-swing packet `swing` -> `punch` (ServerboundPunchPacket). Without it the
+        // swing listener never fires, and custom block mining never progresses: every CraftEngine
+        // block became unbreakable, with no crack at all (BTC bench, 29/09/2026).
+        String name = VersionHelper.isOrAbove26_3 ? "minecraft:punch" : "minecraft:swing";
+        return PacketIdHelper.byName(name, ConnectionState.PLAY, PacketFlow.SERVERBOUND);
     }
 
     @Override
