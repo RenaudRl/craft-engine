@@ -1224,6 +1224,11 @@ public class BukkitServerPlayer extends BukkitLivingEntity implements Player {
     }
 
     private void broadcastDestroyProgress(BlockPos hitPos, float progress) {
+        // Vanilla clients show nothing at zero progress. A null progress (break speed factor 0, i.e. a
+        // refused tool) must not draw crack stage 0 either, so it is treated as "no crack".
+        if (progress <= 0f) {
+            progress = -1f;
+        }
         DestroyStageDisplayEntitySetting display = currentDestroyStageDisplay();
         int key = progress < 0 ? -1 : (display != null ? display.itemIndexForProgress(progress) : (int) (progress * 10.0F));
         if (key == this.lastSentState) {
