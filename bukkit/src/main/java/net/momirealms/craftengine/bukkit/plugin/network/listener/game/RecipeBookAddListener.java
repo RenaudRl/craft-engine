@@ -30,7 +30,7 @@ public final class RecipeBookAddListener implements ByteBufferPacketListener {
         FriendlyByteBuf buf = event.getBuffer();
         BukkitItemManager itemManager = BukkitItemManager.instance();
         List<RecipeBookEntry> entries = buf.readCollection(ArrayList::new, byteBuf -> {
-            RecipeBookEntry entry = RecipeBookEntry.read(byteBuf, $ -> PacketUtils.readItem(buf));
+            RecipeBookEntry entry = RecipeBookEntry.read(byteBuf, $ -> PacketUtils.readSlotDisplayItem(buf));
             entry.applyClientboundData(item -> {
                 Optional<Item> remapped = itemManager.s2c(item, player);
                 if (remapped.isEmpty()) {
@@ -47,7 +47,7 @@ public final class RecipeBookAddListener implements ByteBufferPacketListener {
             buf.clear();
             buf.writeVarInt(event.packetID());
             buf.writeCollection(entries, ((byteBuf, recipeBookEntry) -> recipeBookEntry.write(byteBuf,
-                    ($, item) -> PacketUtils.writeItem(buf, item))));
+                    ($, item) -> PacketUtils.writeSlotDisplayItem(buf, item))));
             buf.writeBoolean(replace);
         }
     }

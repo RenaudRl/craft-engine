@@ -72,7 +72,7 @@ public final class UpdateRecipesListener {
                     b -> b.readCollection(ArrayList::new, FriendlyByteBuf::readVarInt)
             );
             List<SingleInputButtonDisplay> displays = buf.readCollection(ArrayList::new, b -> {
-                SingleInputButtonDisplay display = SingleInputButtonDisplay.read(b, $ -> PacketUtils.readItem(buf));
+                SingleInputButtonDisplay display = SingleInputButtonDisplay.read(b, $ -> PacketUtils.readSlotDisplayItem(buf));
                 display.applyClientboundData(item -> {
                     Optional<Item> remapped = itemManager.s2c(item, player);
                     if (remapped.isEmpty()) {
@@ -92,7 +92,7 @@ public final class UpdateRecipesListener {
                         (b, c) -> b.writeCollection(c, FriendlyByteBuf::writeVarInt)
                 );
                 buf.writeCollection(displays, (b, d) ->
-                        d.write(b, ($, item) -> PacketUtils.writeItem(buf, item)));
+                        d.write(b, ($, item) -> PacketUtils.writeSlotDisplayItem(buf, item)));
             }
         }
     }

@@ -30,7 +30,7 @@ public final class LevelParticleListener implements ByteBufferPacketListener {
     public LevelParticleListener(int[] blockStateMapper, int[] modBlockStateMapper) {
         this.blockStateMapper = blockStateMapper;
         this.modBlockStateMapper = modBlockStateMapper;
-        this.internal = VersionHelper.isOrAbove1_21_4 ? new V1_21_4() : VersionHelper.isOrAbove1_20_5 ? new V1_20_5() : new V1_20();
+        this.internal = VersionHelper.isOrAbove26_3 ? new V26_3() : VersionHelper.isOrAbove1_21_4 ? new V1_21_4() : VersionHelper.isOrAbove1_20_5 ? new V1_20_5() : new V1_20();
     }
 
     @Override
@@ -156,6 +156,38 @@ public final class LevelParticleListener implements ByteBufferPacketListener {
         }
     }
 
+    /**
+     * Rewrites a custom block / item particle option for the client.
+     * Returns null when the option must be left untouched.
+     */
+    private Object remapOption(NetWorkUser user, Object option) {
+        if (BlockParticleOptionProxy.CLASS.isInstance(option)) {
+            Object blockState = BlockParticleOptionProxy.INSTANCE.getState(option);
+            int id = BlockStateUtils.blockStateToId(blockState);
+            int remapped = user.clientCustomBlockEnabled() ? modBlockStateMapper[id] : blockStateMapper[id];
+            if (remapped == id) return null;
+            Object type = BlockParticleOptionProxy.INSTANCE.getType(option);
+            return BlockParticleOptionProxy.INSTANCE.newInstance(type, BlockStateUtils.idToBlockState(remapped));
+        } else if (ItemParticleOptionProxy.CLASS.isInstance(option)) {
+            BukkitItemManager itemManager = BukkitItemManager.instance();
+            Object itemStack = ItemParticleOptionProxy.INSTANCE.getItemStack(option);
+            if (VersionHelper.isOrAbove26_1) {
+                itemStack = ItemStackTemplateProxy.INSTANCE.create(itemStack);
+            }
+            Item item = itemManager.wrap(itemStack);
+            item = itemManager.s2c(item, (net.momirealms.craftengine.core.entity.player.Player) user).orElse(null);
+            if (item == null) return null;
+            Object type = ItemParticleOptionProxy.INSTANCE.getType(option);
+            Object stack = item.minecraftItem();
+            if (VersionHelper.isOrAbove26_1) {
+                Object template = ItemStackTemplateProxy.INSTANCE.fromNonEmptyStack(stack);
+                return ItemParticleOptionProxy.INSTANCE.newInstance$1(type, template);
+            }
+            return ItemParticleOptionProxy.INSTANCE.newInstance$0(type, stack);
+        }
+        return null;
+    }
+
     private final class V1_21_4 implements Internal {
         private V1_21_4() {}
 
@@ -181,32 +213,8 @@ public final class LevelParticleListener implements ByteBufferPacketListener {
             buf.readerIndex(optionStart);
             Object option = StreamDecoderProxy.INSTANCE.decode(ParticleTypesProxy.STREAM_CODEC, PacketUtils.ensureNMSFriendlyByteBuf(buf.source()));
             if (option == null) return;
-            Object newOption;
-            if (BlockParticleOptionProxy.CLASS.isInstance(option)) {
-                Object blockState = BlockParticleOptionProxy.INSTANCE.getState(option);
-                int id = BlockStateUtils.blockStateToId(blockState);
-                int remapped = user.clientCustomBlockEnabled() ? modBlockStateMapper[id] : blockStateMapper[id];
-                if (remapped == id) return;
-                Object type = BlockParticleOptionProxy.INSTANCE.getType(option);
-                newOption = BlockParticleOptionProxy.INSTANCE.newInstance(type, BlockStateUtils.idToBlockState(remapped));
-            } else if (ItemParticleOptionProxy.CLASS.isInstance(option)) {
-                BukkitItemManager itemManager = BukkitItemManager.instance();
-                Object itemStack = ItemParticleOptionProxy.INSTANCE.getItemStack(option);
-                if (VersionHelper.isOrAbove26_1) {
-                    itemStack = ItemStackTemplateProxy.INSTANCE.create(itemStack);
-                }
-                Item item = itemManager.wrap(itemStack);
-                item = itemManager.s2c(item, (net.momirealms.craftengine.core.entity.player.Player) user).orElse(null);
-                if (item == null) return;
-                Object type = ItemParticleOptionProxy.INSTANCE.getType(option);
-                Object stack = item.minecraftItem();
-                if (VersionHelper.isOrAbove26_1) {
-                    Object template = ItemStackTemplateProxy.INSTANCE.fromNonEmptyStack(stack);
-                    newOption = ItemParticleOptionProxy.INSTANCE.newInstance$1(type, template);
-                } else {
-                    newOption = ItemParticleOptionProxy.INSTANCE.newInstance$0(type, stack);
-                }
-            } else return;
+            Object newOption = remapOption(user, option);
+            if (newOption == null) return;
             event.setChanged(true);
             buf.clear();
             buf.writeVarInt(event.packetID());
@@ -221,6 +229,33 @@ public final class LevelParticleListener implements ByteBufferPacketListener {
             buf.writeFloat(maxSpeed);
             buf.writeInt(count);
             StreamEncoderProxy.INSTANCE.encode(ParticleTypesProxy.STREAM_CODEC, PacketUtils.ensureNMSFriendlyByteBuf(buf.source()), newOption);
+        }
+    }
+
+    // 26.3 reordered the packet (ClientboundLevelParticlesPacket.STREAM_CODEC): the ParticleOptions now come FIRST,
+    // followed by the unchanged-by-us tail (flags, position, dists, 3 max speeds, VarInt count, randomization type).
+    private final class V26_3 implements Internal {
+        private V26_3() {}
+
+        @Override
+        public void handleSend(NetWorkUser user, ByteBufPacketEvent event) {
+            FriendlyByteBuf buf = event.getBuffer();
+            int optionStart = buf.readerIndex();
+            if (Config.disableVanillaDamageParticles() && buf.readVarInt() == DAMAGE_INDICATOR) {
+                event.setCancelled(true);
+                return;
+            }
+            buf.readerIndex(optionStart);
+            Object option = StreamDecoderProxy.INSTANCE.decode(ParticleTypesProxy.STREAM_CODEC, PacketUtils.ensureNMSFriendlyByteBuf(buf.source()));
+            if (option == null) return;
+            Object newOption = remapOption(user, option);
+            if (newOption == null) return;
+            byte[] tail = buf.readFixedBytes(buf.readableBytes());
+            event.setChanged(true);
+            buf.clear();
+            buf.writeVarInt(event.packetID());
+            StreamEncoderProxy.INSTANCE.encode(ParticleTypesProxy.STREAM_CODEC, PacketUtils.ensureNMSFriendlyByteBuf(buf.source()), newOption);
+            buf.writeBytes(tail);
         }
     }
 }

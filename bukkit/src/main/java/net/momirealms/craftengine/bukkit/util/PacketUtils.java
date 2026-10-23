@@ -121,6 +121,16 @@ public final class PacketUtils {
         StreamEncoderProxy.INSTANCE.encode(ItemStackTemplate$STREAM_CODEC, ensureNMSFriendlyByteBuf(buf), ItemStackTemplateProxy.INSTANCE.fromNonEmptyStack(item.minecraftItem()));
     }
 
+    // SlotDisplay.ItemStackSlotDisplay carries an ItemStackTemplate (item, count, patch) since 26.1, not an optional ItemStack (count, item, patch).
+    public static Item readSlotDisplayItem(ByteBuf buf) {
+        return VersionHelper.isOrAbove26_1 ? readItemTemplate(buf) : readItem(buf);
+    }
+
+    public static void writeSlotDisplayItem(ByteBuf buf, Item item) {
+        if (VersionHelper.isOrAbove26_1) writeItemTemplate(buf, item);
+        else writeItem(buf, item);
+    }
+
     public static Item readUntrustedItem(ByteBuf buf) {
         if (!VersionHelper.isOrAbove1_20_5) throw new UnsupportedOperationException("This feature is only available on 1.20.5+");
         return ItemStackUtils.wrap(StreamDecoderProxy.INSTANCE.decode(UNTRUSTED_ITEM_CODEC, ensureNMSFriendlyByteBuf(buf)));
