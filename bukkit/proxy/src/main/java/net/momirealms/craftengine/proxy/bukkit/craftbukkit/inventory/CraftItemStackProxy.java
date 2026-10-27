@@ -17,19 +17,14 @@ public interface CraftItemStackProxy {
     @FieldGetter(name = "handle")
     Object getHandle(ItemStack target);
 
-    // 26.3: asCraftCopy is gone; every API ItemStack now carries a CraftItemStack delegate,
-    // reachable through getCraftStack (a view, not a copy).
     @MethodInvoker(name = "asCraftCopy", isStatic = true, activeIf = "max_version=26.2")
-    ItemStack asCraftCopy(ItemStack original);
-
-    @MethodInvoker(name = "getCraftStack", isStatic = true, activeIf = "min_version=26.3")
-    ItemStack getCraftStack(ItemStack original);
+    default ItemStack asCraftCopy(ItemStack original) {
+        return asCraftMirror(asNMSCopy(original));
+    }
 
     @MethodInvoker(name = "asNMSCopy", isStatic = true)
     Object asNMSCopy(ItemStack original);
 
-    // Paper 26.3 renamed asCraftMirror to asBukkitMirror (same contract: a Bukkit view over the
-    // live NMS stack, no copy).
     @MethodInvoker(name = {"asBukkitMirror", "asCraftMirror"}, isStatic = true)
     ItemStack asCraftMirror(@Type(clazz = ItemStackProxy.class) Object original);
 }

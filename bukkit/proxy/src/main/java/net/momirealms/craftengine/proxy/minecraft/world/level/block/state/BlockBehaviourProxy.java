@@ -358,9 +358,7 @@ public interface BlockBehaviourProxy {
     interface StatePredicateProxy {
         Class<?> CLASS = SparrowClass.find("net.minecraft.world.level.block.state.BlockBehaviour$StatePredicate");
     }
-
-    /** 26.3: {@code isViewBlocking} takes the near-plane box as a fourth argument. */
-    @ReflectionProxy(name = "net.minecraft.world.level.block.state.BlockBehaviour$StateArgumentPredicate")
+    @ReflectionProxy(name = "net.minecraft.world.level.block.state.BlockBehaviour$StateArgumentPredicate", activeIf = "min_version=26.3")
     interface StateArgumentPredicateProxy {
         Class<?> CLASS = SparrowClass.find("net.minecraft.world.level.block.state.BlockBehaviour$StateArgumentPredicate");
     }

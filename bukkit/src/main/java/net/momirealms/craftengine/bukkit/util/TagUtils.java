@@ -19,7 +19,6 @@ import net.momirealms.craftengine.proxy.minecraft.server.packs.repository.PackPr
 import net.momirealms.craftengine.proxy.minecraft.server.packs.repository.PackRepositoryProxy;
 import net.momirealms.craftengine.proxy.minecraft.server.packs.resources.MultiPackResourceManagerProxy;
 import net.momirealms.craftengine.proxy.minecraft.server.packs.resources.ResourceProxy;
-import net.momirealms.craftengine.proxy.minecraft.network.codec.StreamCodecProxy;
 import net.momirealms.craftengine.proxy.minecraft.tags.TagNetworkSerializationProxy;
 
 import java.io.Reader;
@@ -112,7 +111,13 @@ public final class TagUtils {
         List<Object> selected = PackRepositoryProxy.INSTANCE.getSelected(packRepository);
         List<Object> packResources = new ArrayList<>();
         for (Object pack : selected) {
-            PackProxy.openInto(pack, packResources);
+            if (VersionHelper.isOrAbove26_3) {
+                try (java.util.stream.Stream<?> resources = (java.util.stream.Stream<?>) PackProxy.INSTANCE.open(pack)) {
+                    resources.forEach(packResources::add);
+                }
+            } else {
+                packResources.add(PackProxy.INSTANCE.open(pack));
+            }
         }
         try (AutoCloseable resourceManager = (AutoCloseable) MultiPackResourceManagerProxy.INSTANCE.newInstance(PackTypeProxy.SERVER_DATA, packResources)) {
             Map<Object, List<Object>> scannedResourceStacks = FileToIdConverterProxy.INSTANCE.listMatchingResourceStacks(fileToIdConverter, resourceManager);
@@ -188,7 +193,7 @@ public final class TagUtils {
                 continue;
             }
             FriendlyByteBuf deserializeBuf = new FriendlyByteBuf(Unpooled.buffer());
-            writePayload(payload.getValue(), PacketUtils.ensureNMSFriendlyByteBuf(deserializeBuf));
+            TagNetworkSerializationProxy.NetworkPayloadProxy.INSTANCE.write(payload.getValue(), PacketUtils.ensureNMSFriendlyByteBuf(deserializeBuf));
             Map<Key, IntList> originalTags = deserializeBuf.readMap(
                     FriendlyByteBuf::readKey,
                     FriendlyByteBuf::readIntIdList
@@ -199,26 +204,9 @@ public final class TagUtils {
                     FriendlyByteBuf::writeKey,
                     FriendlyByteBuf::writeIntIdList
             );
-            Object mergedPayload = readPayload(PacketUtils.ensureNMSFriendlyByteBuf(serializeBuf));
+            Object mergedPayload = TagNetworkSerializationProxy.NetworkPayloadProxy.INSTANCE.read(PacketUtils.ensureNMSFriendlyByteBuf(serializeBuf));
             modified.put(payload.getKey(), mergedPayload);
         }
         return ClientboundUpdateTagsPacketProxy.INSTANCE.newInstance(modified);
-    }
-
-    // The wire format is identical on both sides of 26.3 (map of identifier -> var-int id list);
-    // only the way the payload exposes it changed: methods before, a StreamCodec since.
-    private static void writePayload(Object payload, Object nmsBuf) {
-        if (VersionHelper.isOrAbove26_3) {
-            StreamCodecProxy.INSTANCE.encode(TagNetworkSerializationProxy.NetworkPayloadProxy.INSTANCE.getStreamCodec(), nmsBuf, payload);
-        } else {
-            TagNetworkSerializationProxy.NetworkPayloadProxy.INSTANCE.write(payload, nmsBuf);
-        }
-    }
-
-    private static Object readPayload(Object nmsBuf) {
-        if (VersionHelper.isOrAbove26_3) {
-            return StreamCodecProxy.INSTANCE.decode(TagNetworkSerializationProxy.NetworkPayloadProxy.INSTANCE.getStreamCodec(), nmsBuf);
-        }
-        return TagNetworkSerializationProxy.NetworkPayloadProxy.INSTANCE.read(nmsBuf);
     }
 }

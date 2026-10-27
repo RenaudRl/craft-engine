@@ -6,7 +6,6 @@ import net.momirealms.craftengine.proxy.minecraft.resources.ResourceKeyProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.level.ChunkPosProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.level.LevelHeightAccessorProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.level.biome.BiomeSourceProxy;
-import net.momirealms.craftengine.proxy.minecraft.world.level.biome.ClimateProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.level.chunk.ChunkGeneratorProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.level.levelgen.RandomStateProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManagerProxy;
@@ -35,9 +34,8 @@ public interface StructureProxy {
                       Predicate<Object> validBiome
     );
 
-    // 26.3: a Climate.Sampler is passed after the biome source (see generate$2).
     @MethodInvoker(name = "generate", activeIf = "min_version=1.21.4 && max_version=26.2")
-    Object generate$1(Object target,
+    default Object generate$1(Object target,
                       @Type(clazz = HolderProxy.class) Object selected,
                       @Type(clazz = ResourceKeyProxy.class) Object dimension,
                       @Type(clazz = RegistryAccessProxy.class) Object registryAccess,
@@ -50,16 +48,19 @@ public interface StructureProxy {
                       int references,
                       @Type(clazz = LevelHeightAccessorProxy.class) Object heightAccessor,
                       Predicate<Object> validBiome
-    );
+    ) {
+        Object sampler = RandomStateProxy.INSTANCE.createClimateSampler(randomState, net.momirealms.craftengine.proxy.minecraft.world.level.levelgen.densityfunction.SamplerContextProxy.EMPTY_UNCACHED);
+        return generate26_3(target, selected, dimension, registryAccess, chunkGenerator, biomeSource, sampler, randomState, structureTemplateManager, seed, sourceChunkPos, references, heightAccessor, validBiome);
+    }
 
     @MethodInvoker(name = "generate", activeIf = "min_version=26.3")
-    Object generate$2(Object target,
+    Object generate26_3(Object target,
                       @Type(clazz = HolderProxy.class) Object selected,
                       @Type(clazz = ResourceKeyProxy.class) Object dimension,
                       @Type(clazz = RegistryAccessProxy.class) Object registryAccess,
                       @Type(clazz = ChunkGeneratorProxy.class) Object chunkGenerator,
                       @Type(clazz = BiomeSourceProxy.class) Object biomeSource,
-                      @Type(clazz = ClimateProxy.SamplerProxy.class) Object climateSampler,
+                      @Type(clazz = net.momirealms.craftengine.proxy.minecraft.world.level.biome.ClimateProxy.SamplerProxy.class) Object sampler,
                       @Type(clazz = RandomStateProxy.class) Object randomState,
                       @Type(clazz = StructureTemplateManagerProxy.class) Object structureTemplateManager,
                       long seed,

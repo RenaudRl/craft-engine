@@ -3,7 +3,6 @@ package net.momirealms.craftengine.bukkit.block.behavior;
 import net.momirealms.antigrieflib.Flag;
 import net.momirealms.craftengine.bukkit.api.CraftEngineBlocks;
 import net.momirealms.craftengine.bukkit.plugin.BukkitCraftEngine;
-import net.momirealms.craftengine.bukkit.util.BonemealUtils;
 import net.momirealms.craftengine.bukkit.util.BlockStateUtils;
 import net.momirealms.craftengine.bukkit.util.LocationUtils;
 import net.momirealms.craftengine.bukkit.util.ParticleUtils;
@@ -39,8 +38,6 @@ import net.momirealms.craftengine.proxy.minecraft.world.level.*;
 import net.momirealms.craftengine.proxy.minecraft.world.level.block.BlocksProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.level.block.BonemealableBlockProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.level.chunk.ChunkGeneratorProxy;
-import net.momirealms.craftengine.proxy.minecraft.world.level.levelgen.RandomStateProxy;
-import net.momirealms.craftengine.proxy.minecraft.world.level.levelgen.densityfunction.SamplerContextProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.level.levelgen.feature.ConfiguredFeatureProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.level.levelgen.structure.BoundingBoxProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.level.levelgen.structure.StructureProxy;
@@ -154,25 +151,7 @@ public final class SaplingBlockBehavior extends BukkitBlockBehavior implements B
             int z = BlockPosProxy.INSTANCE.getZ(blockPos);
             Object chunkPos = ChunkPosProxy.INSTANCE.newInstance(x >> 4, z >> 4);
             Object start;
-            if (VersionHelper.isOrAbove26_3) {
-                // 26.3: the climate sampler is created from the random state, as ChunkGenerator does.
-                Object climateSampler = RandomStateProxy.INSTANCE.createClimateSampler(randomState, SamplerContextProxy.simple());
-                start = StructureProxy.INSTANCE.generate$2(structure,
-                        structureHolder,
-                        dimension,
-                        registryAccess,
-                        chunkGenerator,
-                        biomeSource,
-                        climateSampler,
-                        randomState,
-                        manager,
-                        seed,
-                        chunkPos,
-                        0,
-                        level,
-                        b -> true
-                );
-            } else if (VersionHelper.isOrAbove1_21_4) {
+            if (VersionHelper.isOrAbove1_21_4) {
                 start = StructureProxy.INSTANCE.generate$1(structure,
                         structureHolder,
                         dimension,
@@ -254,7 +233,11 @@ public final class SaplingBlockBehavior extends BukkitBlockBehavior implements B
         Object visualStateBlock = BlockStateUtils.getBlockOwner(visualState);
         if (BonemealableBlockProxy.CLASS.isInstance(visualStateBlock)) {
             boolean is;
-            is = BonemealUtils.isValidBonemealTarget(visualStateBlock, level, blockPos, visualState);
+            if (VersionHelper.isOrAbove1_20_2) {
+                is = BonemealableBlockProxy.INSTANCE.isValidBonemealTarget(visualStateBlock, level, blockPos, visualState);
+            } else {
+                is = BonemealableBlockProxy.INSTANCE.isValidBonemealTarget(visualStateBlock, level, blockPos, visualState, true);
+            }
             if (!is) {
                 sendParticles = true;
             }
@@ -299,7 +282,11 @@ public final class SaplingBlockBehavior extends BukkitBlockBehavior implements B
         Object visualStateBlock = BlockStateUtils.getBlockOwner(visualState);
         if (BonemealableBlockProxy.CLASS.isInstance(visualStateBlock)) {
             boolean is;
-            is = BonemealUtils.isValidBonemealTarget(visualStateBlock, world.minecraftWorld(), LocationUtils.toBlockPos(pos), visualState);
+            if (VersionHelper.isOrAbove1_20_2) {
+                is = BonemealableBlockProxy.INSTANCE.isValidBonemealTarget(visualStateBlock, world.minecraftWorld(), LocationUtils.toBlockPos(pos), visualState);
+            } else {
+                is = BonemealableBlockProxy.INSTANCE.isValidBonemealTarget(visualStateBlock, world.minecraftWorld(), LocationUtils.toBlockPos(pos), visualState, true);
+            }
             if (!is) {
                 sendSwing = true;
             }

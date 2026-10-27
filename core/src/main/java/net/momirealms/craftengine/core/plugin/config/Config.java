@@ -63,8 +63,6 @@ public final class Config {
     private boolean misc$hook_axiom_paper;
     private boolean misc$fix_world_memory_leak;
 
-    private int cache$json_to_component = 512;
-
     private boolean scripting$js$enable;
     private String scripting$js$engine;
     private boolean scripting$js$nashorn_compat;
@@ -88,6 +86,7 @@ public final class Config {
     private List<String> resource_pack$merge_external_folders;
     private List<String> resource_pack$merge_external_zips;
     private Set<String> resource_pack$exclude_file_extensions;
+    private boolean resource_pack$cache_resource_files;
     private String resource_pack$description;
 
     private boolean resource_pack$protection$crash_tools$method_1;
@@ -136,6 +135,7 @@ public final class Config {
     private List<String> resource_pack$protection$obfuscation$bypass_equipments;
     private List<String> resource_pack$protection$obfuscation$bypass_item_models;
 
+    private int resource_pack$optimization$cache_size;
     private boolean resource_pack$optimization$texture$enable;
     private Set<String> resource_pack$optimization$texture$exlude;
     private int resource_pack$optimization$texture$zopfli_iterations;
@@ -165,6 +165,7 @@ public final class Config {
     private boolean chunk_system$cache_system = true;
     private boolean chunk_system$async_write = true;
     private boolean chunk_system$async_read = true;
+    private boolean chunk_system$lifecycle_cache;
     private boolean chunk_system$injection$target;
     private boolean chunk_system$process_invalid_furniture$enable;
     private Map<String, String> chunk_system$process_invalid_furniture$mapping;
@@ -247,6 +248,7 @@ public final class Config {
     private boolean network$intercept_packets$combat_kill;
     private boolean network$intercept_packets$dialog;
     private boolean network$disable_item_operations;
+    private boolean network$minimize_item_packets;
     private boolean network$disable_chat_report;
     private boolean network$mod_channel$requires_permission;
     private boolean network$mod_channel$logging_permission_denied;
@@ -405,11 +407,6 @@ public final class Config {
         this.misc$hook_axiom_paper = config.getBoolean("misc.hook-axiompaper", true);
         this.misc$fix_world_memory_leak = config.getBoolean("misc.fix-world-memory-leak", false);
 
-        // cache，重启后生效
-        if (this.firstTime) {
-            this.cache$json_to_component = Math.max(config.getInt("cache.json-to-component", 512), 0);
-        }
-
         // scripting
         this.scripting$js$enable = config.getBoolean("scripting.js.enable", false);
         this.scripting$js$engine = config.getString("scripting.js.engine", "nashorn");
@@ -447,6 +444,7 @@ public final class Config {
         this.resource_pack$merge_external_folders = config.getStringList("resource-pack.merge-external-folders");
         this.resource_pack$merge_external_zips = config.getStringList("resource-pack.merge-external-zip-files");
         this.resource_pack$exclude_file_extensions = new HashSet<>(config.getStringList("resource-pack.exclude-file-extensions"));
+        this.resource_pack$cache_resource_files = config.getBoolean("resource-pack.cache-resource-files", true);
         this.resource_pack$delivery$send_on_join = config.getBoolean("resource-pack.delivery.send-on-join", true);
         this.resource_pack$delivery$kick_if_declined = config.getBoolean("resource-pack.delivery.kick-if-declined", true);
         this.resource_pack$delivery$kick_if_failed_to_apply = config.getBoolean("resource-pack.delivery.kick-if-failed-to-apply", true);
@@ -501,6 +499,7 @@ public final class Config {
         this.resource_pack$protection$obfuscation$bypass_sounds = config.getStringList("resource-pack.protection.obfuscation.bypass-sounds");
         this.resource_pack$protection$obfuscation$bypass_equipments = config.getStringList("resource-pack.protection.obfuscation.bypass-equipments");
         this.resource_pack$protection$obfuscation$bypass_item_models = config.getStringList("resource-pack.protection.obfuscation.bypass-item-models");
+        this.resource_pack$optimization$cache_size = Math.max(0, config.getInt("resource-pack.optimization.cache-size", 64));
         this.resource_pack$optimization$texture$enable = config.getBoolean("resource-pack.optimization.texture.enable", true);
         this.resource_pack$optimization$texture$zopfli_iterations = config.getInt("resource-pack.optimization.texture.zopfli-iterations", 0);
         this.resource_pack$optimization$texture$exlude = config.getStringList("resource-pack.optimization.texture.exclude").stream().map(p -> {
@@ -568,9 +567,16 @@ public final class Config {
         this.chunk_system$cache_system = config.getBoolean("chunk-system.cache-system", true);
         this.chunk_system$async_write = config.getBoolean("chunk-system.async-write", true);
         this.chunk_system$async_read = config.getBoolean("chunk-system.async-read", true);
+        if (this.firstTime) {
+            String cacheMode = config.getString("chunk-system.cache-mode", "lifecycle");
+            if (!cacheMode.equalsIgnoreCase("timed") && !cacheMode.equalsIgnoreCase("lifecycle")) {
+                throw new IllegalArgumentException("Unknown chunk-system.cache-mode: " + cacheMode);
+            }
+            this.chunk_system$lifecycle_cache = cacheMode.equalsIgnoreCase("lifecycle");
+        }
 
         if (this.firstTime) {
-            this.chunk_system$injection$target = config.getString("chunk-system.injection.target", "palette").equalsIgnoreCase("palette");
+            this.chunk_system$injection$target = config.getString("chunk-system.injection.target", "palette").equalsIgnoreCase("palette") || (VersionHelper.hasLeafPatch && !VersionHelper.isOrAbove1_21_11);
         }
 
         this.chunk_system$process_invalid_furniture$enable = config.getBoolean("chunk-system.process-invalid-furniture.enable", false);
@@ -793,6 +799,8 @@ public final class Config {
             this.network$performance_mode$entity = config.getBoolean("network.performance-mode.entity", true);
             this.network$performance_mode$text = config.getBoolean("network.performance-mode.text", true);
         }
+
+        this.network$minimize_item_packets = config.getBoolean("network.minimize-item-packets", false);
         this.network$disable_item_operations = config.getBoolean("network.disable-item-operations", false);
         this.network$intercept_packets$system_chat = config.getBoolean("network.intercept-packets.system-chat", true);
         this.network$intercept_packets$tab_list = config.getBoolean("network.intercept-packets.tab-list", true);
@@ -906,10 +914,6 @@ public final class Config {
 
     public static boolean fixWorldMemoryLeak() {
         return instance.misc$fix_world_memory_leak;
-    }
-
-    public static int jsonToComponentCacheSize() {
-        return instance.cache$json_to_component;
     }
 
     public static boolean debugCommon() {
@@ -1082,6 +1086,10 @@ public final class Config {
 
     public static Set<String> excludeFileExtensions() {
         return instance.resource_pack$exclude_file_extensions;
+    }
+
+    public static boolean cacheResourceFiles() {
+        return instance.resource_pack$cache_resource_files;
     }
 
     public static boolean kickOnDeclined() {
@@ -1343,6 +1351,10 @@ public final class Config {
         return instance.network$disable_item_operations;
     }
 
+    public static boolean minimizeItems() {
+        return instance.network$minimize_item_packets;
+    }
+
     public static boolean nettyPerformanceModeItem() {
         return instance.network$performance_mode$item;
     }
@@ -1467,6 +1479,10 @@ public final class Config {
         return instance.chunk_system$async_read;
     }
 
+    public static boolean lifecycleChunkCache() {
+        return instance.chunk_system$lifecycle_cache;
+    }
+
     public static boolean addNonItalicTag() {
         return instance.item$non_italic_tag;
     }
@@ -1584,12 +1600,41 @@ public final class Config {
         return instance.item$default_material;
     }
 
+    /**
+     * Returns the first ZIP output path in resource pack workflow configuration order.
+     * Absolute paths are used directly; relative paths are resolved against the plugin data folder.
+     * The returned path is absolute and normalized.
+     *
+     * @throws IllegalStateException if no workflow contains a ZIP output step
+     * @deprecated Resource pack workflows can have multiple output paths, so there is no
+     * single resource pack path. Use the output path of the intended workflow instead.
+     */
+    @Deprecated
+    public static Path resourcePackPath() {
+        Object value = YamlUtils.reader(instance.settings()).getValue("resource-pack.workflows");
+        ConfigSection workflows = ConfigSection.of("resource-pack.workflows", value == null ? Map.of() : value);
+        for (String name : workflows.keySet()) {
+            ConfigSection workflow = Objects.requireNonNull(workflows.getValue(name)).getAsSection();
+            for (ConfigSection step : workflow.getList("steps", entry -> entry.value() instanceof String
+                    ? ConfigSection.of(entry.path(), Map.of("type", entry.getAsString())) : entry.getAsSection())) {
+                if (Key.ce(step.getNonEmptyString("type")).equals(Key.ce("zip"))) {
+                    return instance.plugin.dataFolderPath().resolve(step.getNonEmptyString("path")).toAbsolutePath().normalize();
+                }
+            }
+        }
+        throw new IllegalStateException("No resource pack workflow contains a ZIP output step");
+    }
+
     public void setObf(boolean enable) {
         this.resource_pack$protection$obfuscation$enable = enable;
     }
 
     public static boolean optimizeTexture() {
         return instance.resource_pack$optimization$texture$enable;
+    }
+
+    public static long optimizationCacheSize() {
+        return instance.resource_pack$optimization$cache_size * 1024L * 1024L;
     }
 
     public static Set<String> optimizeTextureExclude() {

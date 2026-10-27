@@ -2,6 +2,7 @@ package net.momirealms.craftengine.proxy.minecraft.tags;
 
 import net.momirealms.craftengine.proxy.minecraft.core.LayeredRegistryAccessProxy;
 import net.momirealms.craftengine.proxy.minecraft.network.FriendlyByteBufProxy;
+import net.momirealms.craftengine.proxy.minecraft.network.codec.StreamCodecProxy;
 import net.momirealms.sparrow.reflection.proxy.ASMProxyFactory;
 import net.momirealms.sparrow.reflection.proxy.annotation.FieldGetter;
 import net.momirealms.sparrow.reflection.proxy.annotation.MethodInvoker;
@@ -21,13 +22,15 @@ public interface TagNetworkSerializationProxy {
     interface NetworkPayloadProxy {
         NetworkPayloadProxy INSTANCE = ASMProxyFactory.create(NetworkPayloadProxy.class);
 
-        // Up to 26.2 the payload wrote and read itself; 26.3 turned it into a record whose only
-        // wire format is its STREAM_CODEC. TagUtils picks the path for the running server.
         @MethodInvoker(name = "write", activeIf = "max_version=26.2")
-        void write(Object target, @Type(clazz = FriendlyByteBufProxy.class) Object buf);
+        default void write(Object target, @Type(clazz = FriendlyByteBufProxy.class) Object buf) {
+            StreamCodecProxy.INSTANCE.encode(getStreamCodec(), buf, target);
+        }
 
         @MethodInvoker(name = "read", isStatic = true, activeIf = "max_version=26.2")
-        Object read(@Type(clazz = FriendlyByteBufProxy.class) Object buf);
+        default Object read(@Type(clazz = FriendlyByteBufProxy.class) Object buf) {
+            return StreamCodecProxy.INSTANCE.decode(getStreamCodec(), buf);
+        }
 
         @FieldGetter(name = "STREAM_CODEC", isStatic = true, activeIf = "min_version=26.3")
         Object getStreamCodec();

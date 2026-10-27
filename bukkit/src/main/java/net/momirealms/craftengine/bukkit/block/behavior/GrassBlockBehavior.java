@@ -2,7 +2,6 @@ package net.momirealms.craftengine.bukkit.block.behavior;
 
 import net.momirealms.antigrieflib.Flag;
 import net.momirealms.craftengine.bukkit.plugin.BukkitCraftEngine;
-import net.momirealms.craftengine.bukkit.util.BonemealUtils;
 import net.momirealms.craftengine.bukkit.util.BlockStateUtils;
 import net.momirealms.craftengine.bukkit.util.LocationUtils;
 import net.momirealms.craftengine.bukkit.util.ParticleUtils;
@@ -78,7 +77,7 @@ public final class GrassBlockBehavior extends BukkitBlockBehavior implements Bon
         Object visualState = customState.visualBlockState().minecraftState();
         Object visualStateBlock = BlockStateUtils.getBlockOwner(visualState);
         if (BonemealableBlockProxy.CLASS.isInstance(visualStateBlock)) {
-            boolean is = BonemealUtils.isValidBonemealTarget(visualStateBlock, level, blockPos, visualState);
+            boolean is = BonemealableBlockProxy.INSTANCE.isValidBonemealTarget(visualStateBlock, level, blockPos, visualState);
             if (!is) {
                 sendParticles = true;
             }
@@ -117,7 +116,11 @@ public final class GrassBlockBehavior extends BukkitBlockBehavior implements Bon
         Object visualStateBlock = BlockStateUtils.getBlockOwner(visualState);
         if (BonemealableBlockProxy.CLASS.isInstance(visualStateBlock)) {
             boolean is;
-            is = BonemealUtils.isValidBonemealTarget(visualStateBlock, world.minecraftWorld(), LocationUtils.toBlockPos(pos), visualState);
+            if (VersionHelper.isOrAbove1_20_2) {
+                is = BonemealableBlockProxy.INSTANCE.isValidBonemealTarget(visualStateBlock, world.minecraftWorld(), LocationUtils.toBlockPos(pos), visualState);
+            } else {
+                is = BonemealableBlockProxy.INSTANCE.isValidBonemealTarget(visualStateBlock, world.minecraftWorld(), LocationUtils.toBlockPos(pos), visualState, true);
+            }
             if (!is) {
                 sendSwing = true;
             }
@@ -163,7 +166,11 @@ public final class GrassBlockBehavior extends BukkitBlockBehavior implements Bon
                     continue out;
                 }
                 if (BlockStateUtils.getBlockOwner(currentState) == BlocksProxy.SHORT_GRASS && RandomUtils.generateRandomInt(0, 10) == 0) {
-                    BonemealUtils.performBonemeal(BlocksProxy.SHORT_GRASS, world, random, nmsCurrentPos, currentState);
+                    if (VersionHelper.isOrAbove26_3) {
+                        BonemealableBlockProxy.INSTANCE.performBonemeal(BlocksProxy.SHORT_GRASS, world, random, nmsCurrentPos, currentState, args[4]);
+                    } else {
+                        BonemealableBlockProxy.INSTANCE.performBonemeal(BlocksProxy.SHORT_GRASS, world, random, nmsCurrentPos, currentState);
+                    }
                 }
                 if (BlockBehaviourProxy.BlockStateBaseProxy.INSTANCE.isAir(currentState)) {
                     Object chunkGenerator = ServerChunkCacheProxy.INSTANCE.getGenerator(ServerLevelProxy.INSTANCE.getChunkSource(world));

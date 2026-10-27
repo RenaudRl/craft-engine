@@ -29,6 +29,8 @@ resource-pack:
       # - type: optimize
         - type: zip
           path: "./generated/resource_pack.zip"
+          # Skip outer ZIP compression for PNGs. Image quality is unchanged; ZIP size may increase.
+          store-png: false
       #   protection: true  # requires premium version
         - type: upload
           pack: default
@@ -89,6 +91,8 @@ resource-pack:
     - "CustomNameplates/resourcepack.zip"
     - "BetterModel/build.zip"
   exclude-file-extensions: [ "md", "psd", "bbmodel", "db", "ini", "DS_Store", "zip", "gz", "tar", "jar" ]
+  # Cache the resource files in memory to speed up pack generation.
+  cache-resource-files: true
 
   # Remove 1.21.5+ tinted_leaves particles
   remove-tinted-leaves-particle: true
@@ -119,6 +123,12 @@ resource-pack:
   # Optimize your resource pack by reducing its size without any quality loss.
   # Add an optimize step to the workflow to run optimization.
   optimization:
+    # Cache optimization results in memory and cache/pack-optimization.bin.
+    # Load the snapshot on the first optimization after restart; save when results change.
+    # Approximate memory budget in MiB; the disk snapshot contains only retained entries.
+    # 0 disables and clears both caches on the next optimization.
+    # Content changes and PNG compression options automatically select new results.
+    cache-size: 64
     # .png
     texture:
       enable: true
@@ -362,7 +372,7 @@ equipment:
   # If you do not need to use 3D armor, you can disable this option to reduce memory usage.
   # A restart is required to apply the changes.
   lod:
-    enable: true
+    enable: false
 
 block:
   # This decides the amount of real blocks on serverside. You should only consider increasing this value when your server state is insufficient.
@@ -527,13 +537,17 @@ network:
   disable-item-operations: false
 
   # Use the most optimized solution possible in every place to reduce Netty's CPU overhead and memory allocation.
-  # If you encounter any problems or find that it is incompatible with the plugins you are using, please let us know.
+  # This essentially involves processing packets at the NMS packet stage, rather than at the ByteBuffer stage.
+  # Some plugins do not send packets through the standard NMS packet approach in order to optimize their packet-sending performance.
+  # Therefore, when optimization is enabled, not all packets can be intercepted by CraftEngine.
   # Requires a restart to apply.
   performance-mode:
-    # Handle item packets on the NMS stage instead of the bytebuf stage
     item: true
-    # Handle entity data packets on the NMS stage instead of the bytebuf stage
     entity: true
+
+  # Some components are completely useless for display, yet Minecraft still encodes them. We can simply remove them.
+  # For example, the client doesn't care at all about the description on the other player's armor.
+  minimize-item-packets: false
 
   # Allow <image> <shift> <global> tags in third-party plugins via packet manipulation
   # ⚠️ Disable unused handlers to reduce Netty thread workload
@@ -730,14 +744,23 @@ chunk-system:
   # Worlds whose name matches any of these regex patterns will always use 'none' storage mode (in-memory only)
   # Useful for temporary or frequently reset worlds where persistence is unnecessary
   blacklisted-worlds: []
-  # Caches serialized chunk data to reduce I/O overhead for frequently loaded/unloaded chunks
+  # Caches decoded chunk data to reduce I/O overhead for frequently loaded/unloaded chunks
   cache-system: true
+  # timed: expire cached data after 30 seconds without access
+  # lifecycle: retain data until Moonrise releases its chunk holder, without a timer
+  #
+  # Lifecycle mode requires the Paper loader, compatible Moonrise hooks, cache-system and async-read.
+  # Requires Paper/Folia 1.21.4+. Availability is checked at startup.
+  # If unavailable, falls back to timed caching with one warning per startup.
+  # Requires server restart to take effect.
+  cache-mode: lifecycle
   # Writes chunk data asynchronously on dedicated IO threads instead of blocking the server thread
   # Requires server restart to take effect
   async-write: true
   # Hooks into the server's chunk loading pipeline to read and cache chunk data
   # before the chunk load event, avoiding synchronous disk I/O on the main thread
-  # Only works on Paper 1.21.4+. Falls back to synchronous reads if the injection fails
+  # Only works on Paper 1.21.4+. Timed mode falls back to synchronous reads if injection fails.
+  # Startup chunks and failed preloads may still require synchronous reads in either mode.
   # Requires server restart to take effect
   async-read: true
   # Compression algorithm for chunk data
@@ -848,12 +871,6 @@ misc:
   # There are many plugins that can cause world leaks, eventually leading to a large number of chunks being leaked.
   # Enabling this option can mitigate the world leak issues caused by most plugins.
   fix-world-memory-leak: false
-
-cache:
-  # Maximum number of deserialized components kept in the cache, avoiding repeated JSON parsing of identical text.
-  # Higher values use more memory. 0 disables the cache.
-  # Requires a restart to apply.
-  json-to-component: 512
 
 debug:
   common: false

@@ -1,7 +1,6 @@
 package net.momirealms.craftengine.bukkit.block.behavior;
 
 import net.momirealms.craftengine.bukkit.block.BukkitBlockManager;
-import net.momirealms.craftengine.bukkit.util.BonemealUtils;
 import net.momirealms.craftengine.bukkit.util.BlockStateUtils;
 import net.momirealms.craftengine.bukkit.util.DirectionUtils;
 import net.momirealms.craftengine.bukkit.util.LocationUtils;
@@ -19,6 +18,7 @@ import net.momirealms.craftengine.core.plugin.config.ConfigSection;
 import net.momirealms.craftengine.core.plugin.context.number.NumberProvider;
 import net.momirealms.craftengine.core.util.Direction;
 import net.momirealms.craftengine.core.util.Key;
+import net.momirealms.craftengine.core.util.VersionHelper;
 import net.momirealms.craftengine.core.world.BlockPos;
 import net.momirealms.craftengine.proxy.minecraft.world.level.BlockGetterProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.level.LevelHeightAccessorProxy;
@@ -139,7 +139,9 @@ public final class VineCropBodyBlockBehavior extends AbstractCanSurviveBlockBeha
             Object headBlockState = LevelReaderProxy.INSTANCE.getBlockState(level, headBlockPos);
             Object headBlock = BlockStateProxy.INSTANCE.getBlock(headBlockState);
             if (BonemealableBlockProxy.CLASS.isInstance(headBlock)) {
-                return BonemealUtils.isValidBonemealTarget(headBlock, level, headBlockPos, headBlockState);
+                return VersionHelper.isOrAbove26_3
+                        ? BonemealableBlockProxy.INSTANCE.isValidBonemealTarget(headBlock, level, headBlockPos, headBlockState, args[3])
+                        : BonemealableBlockProxy.INSTANCE.isValidBonemealTarget(headBlock, level, headBlockPos, headBlockState);
             }
             return false;
         }
@@ -174,7 +176,11 @@ public final class VineCropBodyBlockBehavior extends AbstractCanSurviveBlockBeha
             Object headBlockState = LevelReaderProxy.INSTANCE.getBlockState(level, headBlockPos);
             Object headBlock = BlockStateProxy.INSTANCE.getBlock(headBlockState);
             if (BonemealableBlockProxy.CLASS.isInstance(headBlock)) {
-                BonemealUtils.performBonemeal(headBlock, level, randomSource, headBlockPos, headBlockState);
+                if (VersionHelper.isOrAbove26_3) {
+                    BonemealableBlockProxy.INSTANCE.performBonemeal(headBlock, level, randomSource, headBlockPos, headBlockState, args[4]);
+                } else {
+                    BonemealableBlockProxy.INSTANCE.performBonemeal(headBlock, level, randomSource, headBlockPos, headBlockState);
+                }
             }
         }
     }

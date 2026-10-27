@@ -91,7 +91,6 @@ import net.momirealms.craftengine.proxy.minecraft.server.network.config.ServerRe
 import net.momirealms.craftengine.proxy.minecraft.sounds.SoundSourceProxy;
 import net.momirealms.craftengine.proxy.minecraft.util.thread.BlockableEventLoopProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.InteractionHandProxy;
-import net.momirealms.craftengine.proxy.minecraft.world.item.component.SwingAnimationProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.effect.MobEffectsProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.entity.EntityProxy;
 import net.momirealms.craftengine.proxy.minecraft.world.entity.EntityTypesProxy;
@@ -129,8 +128,6 @@ import org.jetbrains.annotations.Nullable;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.lang.ref.Reference;
-import java.lang.ref.WeakReference;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -165,8 +162,8 @@ public class BukkitServerPlayer extends BukkitLivingEntity implements Player {
     private ConnectionState encoderState = ConnectionState.HANDSHAKING; // outbound(encode|s2c)
     private boolean shouldProcessFinishConfiguration = true;
     // some references
-    private Reference<org.bukkit.entity.Player> bukkitPlayerRef;
-    private Reference<Object> nmsPlayerRef;
+    private org.bukkit.entity.Player bukkitPlayer;
+    private Object nmsPlayer;
     // client side dimension info
     private World clientSideWorld;    // check main hand/offhand interaction
     private int lastSuccessfulInteraction;
@@ -270,7 +267,7 @@ public class BukkitServerPlayer extends BukkitLivingEntity implements Player {
     private final PlayerOptionalContext constantContext;
 
     public BukkitServerPlayer(BukkitCraftEngine plugin, @Nullable Channel channel) {
-        super((WeakReference<Object>) null);
+        super();
         this.channel = channel;
         this.plugin = plugin;
         if (channel != null) {
@@ -287,8 +284,8 @@ public class BukkitServerPlayer extends BukkitLivingEntity implements Player {
     }
 
     public void setPlayer(org.bukkit.entity.Player player) {
-        this.bukkitPlayerRef = new WeakReference<>(player);
-        this.nmsPlayerRef = new WeakReference<>(CraftEntityProxy.INSTANCE.getEntity(player));
+        this.bukkitPlayer = player;
+        this.nmsPlayer = CraftEntityProxy.INSTANCE.getEntity(player);
         this.uuid = player.getUniqueId();
         this.isUUIDVerified = true;
         this.name = player.getName();
@@ -480,12 +477,7 @@ public class BukkitServerPlayer extends BukkitLivingEntity implements Player {
 
     @Override
     public void swingHand(InteractionHand hand) {
-        Object nmsHand = hand == InteractionHand.MAIN_HAND ? InteractionHandProxy.MAIN_HAND : InteractionHandProxy.OFF_HAND;
-        if (VersionHelper.isOrAbove26_3) {
-            LivingEntityProxy.INSTANCE.swing(minecraftPlayer(), nmsHand, SwingAnimationProxy.DEFAULT, true);
-        } else {
-            LivingEntityProxy.INSTANCE.swing(minecraftPlayer(), nmsHand, true);
-        }
+        LivingEntityProxy.INSTANCE.swing(minecraftPlayer(), hand == InteractionHand.MAIN_HAND ? InteractionHandProxy.MAIN_HAND : InteractionHandProxy.OFF_HAND, true);
     }
 
     @Override
@@ -1462,14 +1454,12 @@ public class BukkitServerPlayer extends BukkitLivingEntity implements Player {
 
     @Override
     public Object minecraftPlayer() {
-        if (this.nmsPlayerRef == null) return null;
-        return this.nmsPlayerRef.get();
+        return this.nmsPlayer;
     }
 
     @Override
     public org.bukkit.entity.Player platformPlayer() {
-        if (this.bukkitPlayerRef == null) return null;
-        return this.bukkitPlayerRef.get();
+        return this.bukkitPlayer;
     }
 
     @Override
@@ -1958,7 +1948,7 @@ public class BukkitServerPlayer extends BukkitLivingEntity implements Player {
         Object inventory = PlayerProxy.INSTANCE.getInventory(minecraftPlayer());
         Object inventoryMenu = PlayerProxy.INSTANCE.getInventoryMenu(minecraftPlayer());
         Object craftSlots = InventoryMenuProxy.INSTANCE.getCraftSlots(inventoryMenu);
-        return InventoryProxy.clearOrCount(inventory, nmsPredicate, count, craftSlots);
+        return InventoryProxy.INSTANCE.clearOrCountMatchingItems(inventory, nmsPredicate, count, craftSlots);
     }
 
     @Override
